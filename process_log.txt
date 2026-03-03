@@ -1,0 +1,206 @@
+2026-02-24 21:58:44  INFO      ============================================================
+2026-02-24 21:58:44  INFO      SAP P&L Report Processor — starting
+2026-02-24 21:58:44  INFO      Folder: /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report
+2026-02-24 21:58:44  INFO      Found 17 SAP input file(s)
+2026-02-24 21:58:44  INFO      Processing: PL BARWOOD JAN 26 ANNUAL.xlsx  →  BARWOOD / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/BARWOOD Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — BARWOOD / January 2026 (Rev=819284.55, Pay=-289398.07, OtherExp=-103146.59, OpP=26739.89, Profit=6739.89)
+2026-02-24 21:58:44  INFO      Processing: PL CHALLMC JAN 26 ANNUAL.xlsx  →  CHALLMC / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/CHALLMC Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — CHALLMC / January 2026 (Rev=1728293.93, Pay=-1596475.51, OtherExp=-312157.58, OpP=-267938.18, Profit=-267938.18)
+2026-02-24 21:58:44  INFO      Processing: PL CHALLPG JAN 26 ANNUAL.xlsx  →  CHALLPG / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/CHALLPG Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — CHALLPG / January 2026 (Rev=1540902.4, Pay=-1201535.71, OtherExp=-96746.44, OpP=242720.25, Profit=240306.25)
+2026-02-24 21:58:44  INFO      Processing: PL ITCURVES JAN 26 ANNUAL.xlsx  →  ITCURVES / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/ITCURVES Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — ITCURVES / January 2026 (Rev=208200.0, Pay=-50276.35, OtherExp=-34428.54, OpP=112699.88, Profit=112699.88)
+2026-02-24 21:58:44  INFO      Processing: PL REG-CAB JAN 26 ANNUAL.xlsx  →  REG-CAB / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/REG-CAB Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — REG-CAB / January 2026 (Rev=153112.49, Pay=None, OtherExp=-131618.62, OpP=12705.42, Profit=12705.42)
+2026-02-24 21:58:44  INFO      Processing: PL REG-FLEET JAN 26 ANNUAL.xlsx  →  REG-FLEET / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/REG-FLEET Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — REG-FLEET / January 2026 (Rev=110000.0, Pay=None, OtherExp=-41808.76, OpP=-65307.01, Profit=-65307.01)
+2026-02-24 21:58:44  INFO      Processing: PL REG-LEASE JAN 26 ANNUAL.xlsx  →  REG-LEASE / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/REG-LEASE Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — REG-LEASE / January 2026 (Rev=403735.0, Pay=None, OtherExp=-1894.6, OpP=72599.49, Profit=72599.49)
+2026-02-24 21:58:44  INFO      Processing: PL TRANSITGRP JAN 26 ANNUAL.xlsx  →  TRANSITGRP / January 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/January 2026/TRANSITGRP Jan 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — TRANSITGRP / January 2026 (Rev=389340.08, Pay=-471.07, OtherExp=-11811.81, OpP=47057.2, Profit=47057.2)
+2026-02-24 21:58:44  INFO      Processing: PL BARWOOD Feb 26 Annual.xlsx  →  BARWOOD / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/BARWOOD Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — BARWOOD / February 2026 (Rev=200456.92, Pay=-8185.92, OtherExp=0.0, OpP=192271.0, Profit=192271.0)
+2026-02-24 21:58:44  INFO      Processing: PL CHALLMC Feb 26 Annual.xlsx  →  CHALLMC / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/CHALLMC Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — CHALLMC / February 2026 (Rev=None, Pay=None, OtherExp=-117764.65, OpP=-158601.03, Profit=-158601.03)
+2026-02-24 21:58:44  INFO      Processing: PL CHALLPG Feb 26 Annual.xlsx  →  CHALLPG / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/CHALLPG Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — CHALLPG / February 2026 (Rev=None, Pay=None, OtherExp=-175096.25, OpP=-178282.4, Profit=-179702.4)
+2026-02-24 21:58:44  INFO      Processing: PL DISCOVERY Feb 26 Annual.xlsx  →  DISCOVERY / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/DISCOVERY Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — DISCOVERY / February 2026 (Rev=None, Pay=None, OtherExp=-764.93, OpP=-764.93, Profit=-764.93)
+2026-02-24 21:58:44  INFO      Processing: PL ITCURVES Feb 26 Annual.xlsx  →  ITCURVES / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/ITCURVES Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — ITCURVES / February 2026 (Rev=12408.18, Pay=-1425.05, OtherExp=-10668.34, OpP=-9615.21, Profit=-9615.21)
+2026-02-24 21:58:44  INFO      Processing: PL REG-CAB Feb 26 Annual.xlsx  →  REG-CAB / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/REG-CAB Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — REG-CAB / February 2026 (Rev=None, Pay=None, OtherExp=-33859.76, OpP=-43103.44, Profit=-43103.44)
+2026-02-24 21:58:44  INFO      Processing: PL REG-FLEET Feb 26 Annual.xlsx  →  REG-FLEET / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/REG-FLEET Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — REG-FLEET / February 2026 (Rev=None, Pay=None, OtherExp=None, OpP=-4816.5, Profit=-4816.5)
+2026-02-24 21:58:44  INFO      Processing: PL REG-LEASE Feb 26 Annual.xlsx  →  REG-LEASE / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/REG-LEASE Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — REG-LEASE / February 2026 (Rev=None, Pay=None, OtherExp=None, OpP=-261125.88, Profit=-261125.88)
+2026-02-24 21:58:44  INFO      Processing: PL TRANSITGRP Feb 26 Annual.xlsx  →  TRANSITGRP / February 2026
+2026-02-24 21:58:44  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/February 2026/TRANSITGRP Feb 26.pdf
+2026-02-24 21:58:44  INFO        ✓ Aggregate updated — TRANSITGRP / February 2026 (Rev=None, Pay=None, OtherExp=-1800.0, OpP=-1800.0, Profit=-1800.0)
+2026-02-24 21:58:44  INFO      ------------------------------------------------------------
+2026-02-24 21:58:44  INFO      Done.  Processed: 17  |  Skipped (unchanged): 0  |  Errors: 0
+2026-02-24 21:58:44  INFO      ============================================================
+2026-02-24 22:14:22  INFO      ============================================================
+2026-02-24 22:14:22  INFO      SAP P&L Report Processor — starting
+2026-02-24 22:14:22  INFO      Folder: /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report
+2026-02-24 22:14:22  INFO      Found 17 SAP input file(s)
+2026-02-24 22:14:22  INFO      Processing: PL BARWOOD JAN 26 ANNUAL.xlsx  →  BARWOOD / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/BARWOOD Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — BARWOOD / January 2026 (Rev=819284.55, Pay=-289398.07, OtherExp=-103146.59, OpP=26739.89, Profit=6739.89)
+2026-02-24 22:14:22  INFO      Processing: PL CHALLMC JAN 26 ANNUAL.xlsx  →  CHALLMC / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/CHALLMC Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — CHALLMC / January 2026 (Rev=1728293.93, Pay=-1596475.51, OtherExp=-312157.58, OpP=-267938.18, Profit=-267938.18)
+2026-02-24 22:14:22  INFO      Processing: PL CHALLPG JAN 26 ANNUAL.xlsx  →  CHALLPG / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/CHALLPG Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — CHALLPG / January 2026 (Rev=1540902.4, Pay=-1201535.71, OtherExp=-96746.44, OpP=242720.25, Profit=240306.25)
+2026-02-24 22:14:22  INFO      Processing: PL ITCURVES JAN 26 ANNUAL.xlsx  →  ITCURVES / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/ITCURVES Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — ITCURVES / January 2026 (Rev=208200.0, Pay=-50276.35, OtherExp=-34428.54, OpP=112699.88, Profit=112699.88)
+2026-02-24 22:14:22  INFO      Processing: PL REG-CAB JAN 26 ANNUAL.xlsx  →  REG-CAB / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/REG-CAB Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — REG-CAB / January 2026 (Rev=153112.49, Pay=None, OtherExp=-131618.62, OpP=12705.42, Profit=12705.42)
+2026-02-24 22:14:22  INFO      Processing: PL REG-FLEET JAN 26 ANNUAL.xlsx  →  REG-FLEET / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/REG-FLEET Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — REG-FLEET / January 2026 (Rev=110000.0, Pay=None, OtherExp=-41808.76, OpP=-65307.01, Profit=-65307.01)
+2026-02-24 22:14:22  INFO      Processing: PL REG-LEASE JAN 26 ANNUAL.xlsx  →  REG-LEASE / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/REG-LEASE Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — REG-LEASE / January 2026 (Rev=403735.0, Pay=None, OtherExp=-1894.6, OpP=72599.49, Profit=72599.49)
+2026-02-24 22:14:22  INFO      Processing: PL TRANSITGRP JAN 26 ANNUAL.xlsx  →  TRANSITGRP / January 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Jan 26 Financial/TRANSITGRP Jan 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — TRANSITGRP / January 2026 (Rev=389340.08, Pay=-471.07, OtherExp=-11811.81, OpP=47057.2, Profit=47057.2)
+2026-02-24 22:14:22  INFO      Processing: PL BARWOOD Feb 26 Annual.xlsx  →  BARWOOD / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/BARWOOD Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — BARWOOD / February 2026 (Rev=200456.92, Pay=-8185.92, OtherExp=0.0, OpP=192271.0, Profit=192271.0)
+2026-02-24 22:14:22  INFO      Processing: PL CHALLMC Feb 26 Annual.xlsx  →  CHALLMC / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/CHALLMC Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — CHALLMC / February 2026 (Rev=None, Pay=None, OtherExp=-117764.65, OpP=-158601.03, Profit=-158601.03)
+2026-02-24 22:14:22  INFO      Processing: PL CHALLPG Feb 26 Annual.xlsx  →  CHALLPG / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/CHALLPG Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — CHALLPG / February 2026 (Rev=None, Pay=None, OtherExp=-175096.25, OpP=-178282.4, Profit=-179702.4)
+2026-02-24 22:14:22  INFO      Processing: PL DISCOVERY Feb 26 Annual.xlsx  →  DISCOVERY / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/DISCOVERY Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — DISCOVERY / February 2026 (Rev=None, Pay=None, OtherExp=-764.93, OpP=-764.93, Profit=-764.93)
+2026-02-24 22:14:22  INFO      Processing: PL ITCURVES Feb 26 Annual.xlsx  →  ITCURVES / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/ITCURVES Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — ITCURVES / February 2026 (Rev=12408.18, Pay=-1425.05, OtherExp=-10668.34, OpP=-9615.21, Profit=-9615.21)
+2026-02-24 22:14:22  INFO      Processing: PL REG-CAB Feb 26 Annual.xlsx  →  REG-CAB / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/REG-CAB Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — REG-CAB / February 2026 (Rev=None, Pay=None, OtherExp=-33859.76, OpP=-43103.44, Profit=-43103.44)
+2026-02-24 22:14:22  INFO      Processing: PL REG-FLEET Feb 26 Annual.xlsx  →  REG-FLEET / February 2026
+2026-02-24 22:14:22  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/REG-FLEET Feb 26.pdf
+2026-02-24 22:14:22  INFO        ✓ Aggregate updated — REG-FLEET / February 2026 (Rev=None, Pay=None, OtherExp=None, OpP=-4816.5, Profit=-4816.5)
+2026-02-24 22:14:22  INFO      Processing: PL REG-LEASE Feb 26 Annual.xlsx  →  REG-LEASE / February 2026
+2026-02-24 22:14:23  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/REG-LEASE Feb 26.pdf
+2026-02-24 22:14:23  INFO        ✓ Aggregate updated — REG-LEASE / February 2026 (Rev=None, Pay=None, OtherExp=None, OpP=-261125.88, Profit=-261125.88)
+2026-02-24 22:14:23  INFO      Processing: PL TRANSITGRP Feb 26 Annual.xlsx  →  TRANSITGRP / February 2026
+2026-02-24 22:14:23  INFO        ✓ PDF → /sessions/compassionate-tender-ride/mnt/AntiGravity-SAP report/Feb 26 Financial/TRANSITGRP Feb 26.pdf
+2026-02-24 22:14:23  INFO        ✓ Aggregate updated — TRANSITGRP / February 2026 (Rev=None, Pay=None, OtherExp=-1800.0, OpP=-1800.0, Profit=-1800.0)
+2026-02-24 22:14:23  INFO      ------------------------------------------------------------
+2026-02-24 22:14:23  INFO      Done.  Processed: 17  |  Skipped (unchanged): 0  |  Errors: 0
+2026-02-24 22:14:23  INFO      ============================================================
+2026-03-02 19:26:45  INFO      ============================================================
+2026-03-02 19:26:45  INFO      SAP Report Processor — starting (P&L + Balance Sheet)
+2026-03-02 19:26:45  INFO      Folder: /sessions/pensive-eager-mayer/mnt/AntiGravity-SAP report
+2026-03-02 19:26:45  INFO      Found 33 SAP input file(s)
+2026-03-02 19:26:45  INFO      Processing: BS BARWOOD JAN 26 ANNUAL.xlsx  →  BS / BARWOOD / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/BARWOOD Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS CHALLMC JAN 26 ANNUAL.xlsx  →  BS / CHALLMC / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/CHALLMC Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS CHALLPG JAN 26 ANNUAL.xlsx  →  BS / CHALLPG / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/CHALLPG Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS ITCURVES JAN 26 ANNUAL.xlsx  →  BS / ITCURVES / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/ITCURVES Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS REG-CAB JAN 26 ANNUAL.xlsx  →  BS / REG-CAB / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-CAB Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS REG-FLEET JAN 26 ANNUAL.xlsx  →  BS / REG-FLEET / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-FLEET Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS REG-LEASE JAN 26 ANNUAL.xlsx  →  BS / REG-LEASE / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-LEASE Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: BS TRANSITGRP JAN 26 ANNUAL.xlsx  →  BS / TRANSITGRP / January 2026
+2026-03-02 19:26:45  INFO        ✓ BS PDF → Bal-Sht Jan 26/TRANSITGRP Jan 26.pdf
+2026-03-02 19:26:45  INFO      Processing: PL BARWOOD JAN 26 ANNUAL.xlsx  →  PL / BARWOOD / January 2026
+2026-03-02 19:26:45  INFO        ✓ PL PDF → P&L Jan 26/BARWOOD Jan 26.pdf
+2026-03-02 19:26:45  INFO        ✓ Aggregate updated — BARWOOD / January 2026
+2026-03-02 19:26:45  INFO      Processing: PL CHALLMC JAN 26 ANNUAL.xlsx  →  PL / CHALLMC / January 2026
+2026-03-02 19:26:45  INFO        ✓ PL PDF → P&L Jan 26/CHALLMC Jan 26.pdf
+2026-03-02 19:26:45  INFO        ✓ Aggregate updated — CHALLMC / January 2026
+2026-03-02 19:26:45  INFO      Processing: PL CHALLPG JAN 26 ANNUAL.xlsx  →  PL / CHALLPG / January 2026
+2026-03-02 19:26:45  INFO        ✓ PL PDF → P&L Jan 26/CHALLPG Jan 26.pdf
+2026-03-02 19:26:45  INFO        ✓ Aggregate updated — CHALLPG / January 2026
+2026-03-02 19:26:45  INFO      Processing: PL ITCURVES JAN 26 ANNUAL.xlsx  →  PL / ITCURVES / January 2026
+2026-03-02 19:26:45  INFO        ✓ PL PDF → P&L Jan 26/ITCURVES Jan 26.pdf
+2026-03-02 19:26:45  INFO        ✓ Aggregate updated — ITCURVES / January 2026
+2026-03-02 19:26:45  INFO      Processing: PL REG-CAB JAN 26 ANNUAL.xlsx  →  PL / REG-CAB / January 2026
+2026-03-02 19:26:45  INFO        ✓ PL PDF → P&L Jan 26/REG-CAB Jan 26.pdf
+2026-03-02 19:26:45  INFO        ✓ Aggregate updated — REG-CAB / January 2026
+2026-03-02 19:26:45  INFO      Processing: PL REG-FLEET JAN 26 ANNUAL.xlsx  →  PL / REG-FLEET / January 2026
+2026-03-02 19:26:45  INFO        ✓ PL PDF → P&L Jan 26/REG-FLEET Jan 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — REG-FLEET / January 2026
+2026-03-02 19:26:46  INFO      Processing: PL REG-LEASE JAN 26 ANNUAL.xlsx  →  PL / REG-LEASE / January 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Jan 26/REG-LEASE Jan 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — REG-LEASE / January 2026
+2026-03-02 19:26:46  INFO      Processing: PL TRANSITGRP JAN 26 ANNUAL.xlsx  →  PL / TRANSITGRP / January 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Jan 26/TRANSITGRP Jan 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — TRANSITGRP / January 2026
+2026-03-02 19:26:46  INFO      Processing: BS BARWOOD FEB 26 ANNUAL.xlsx  →  BS / BARWOOD / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/BARWOOD Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS CHALLMC FEB 26 ANNUAL.xlsx  →  BS / CHALLMC / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/CHALLMC Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS CHALLPG FEB 26 ANNUAL.xlsx  →  BS / CHALLPG / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/CHALLPG Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS ITCURVES FEB 26 ANNUAL.xlsx  →  BS / ITCURVES / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/ITCURVES Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS REG-CAB FEB 26 ANNUAL.xlsx  →  BS / REG-CAB / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-CAB Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS REG-FLEET FEB 26 ANNUAL.xlsx  →  BS / REG-FLEET / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-FLEET Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS REG-LEASE FEB 26 ANNUAL.xlsx  →  BS / REG-LEASE / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-LEASE Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: BS TRANSITGRP FEB 26 ANNUAL.xlsx  →  BS / TRANSITGRP / February 2026
+2026-03-02 19:26:46  INFO        ✓ BS PDF → Bal-Sht Feb 26/TRANSITGRP Feb 26.pdf
+2026-03-02 19:26:46  INFO      Processing: PL BARWOOD Feb 26 Annual.xlsx  →  PL / BARWOOD / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/BARWOOD Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — BARWOOD / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL CHALLMC Feb 26 Annual.xlsx  →  PL / CHALLMC / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/CHALLMC Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — CHALLMC / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL CHALLPG Feb 26 Annual.xlsx  →  PL / CHALLPG / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/CHALLPG Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — CHALLPG / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL DISCOVERY Feb 26 Annual.xlsx  →  PL / DISCOVERY / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/DISCOVERY Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — DISCOVERY / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL ITCURVES Feb 26 Annual.xlsx  →  PL / ITCURVES / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/ITCURVES Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — ITCURVES / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL REG-CAB Feb 26 Annual.xlsx  →  PL / REG-CAB / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/REG-CAB Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — REG-CAB / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL REG-FLEET Feb 26 Annual.xlsx  →  PL / REG-FLEET / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/REG-FLEET Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — REG-FLEET / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL REG-LEASE Feb 26 Annual.xlsx  →  PL / REG-LEASE / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/REG-LEASE Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — REG-LEASE / February 2026
+2026-03-02 19:26:46  INFO      Processing: PL TRANSITGRP Feb 26 Annual.xlsx  →  PL / TRANSITGRP / February 2026
+2026-03-02 19:26:46  INFO        ✓ PL PDF → P&L Feb 26/TRANSITGRP Feb 26.pdf
+2026-03-02 19:26:46  INFO        ✓ Aggregate updated — TRANSITGRP / February 2026
+2026-03-02 19:26:46  INFO      ------------------------------------------------------------
+2026-03-02 19:26:46  INFO      Done.  Processed: 33  |  Skipped (unchanged): 0  |  Errors: 0
+2026-03-02 19:26:46  INFO      ============================================================
