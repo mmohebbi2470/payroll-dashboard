@@ -27,7 +27,8 @@ import process_reports
 #  CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-PORT = 8080
+PORT = int(os.environ.get("AG_PORTAL_PORT", "3002"))
+HOST = os.environ.get("AG_HOST", "0.0.0.0")
 BASE_FOLDER = SCRIPT_DIR
 INPUT_DIR = os.path.join(BASE_FOLDER, "Input Files")
 USERS_FILE = os.path.join(BASE_FOLDER, "users.xlsx")
@@ -445,13 +446,19 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
 /* Header */
 .header {{ background: linear-gradient(135deg, #0f3460, #1a4a8a); color: white;
            padding: 14px 32px; display: flex; align-items: center; justify-content: space-between;
-           box-shadow: 0 2px 10px rgba(0,0,0,0.15); flex-shrink: 0; }}
+           box-shadow: 0 2px 10px rgba(0,0,0,0.15); flex-shrink: 0; z-index: 100; position: relative; }}
 .header h1 {{ font-size: 20px; }}
 .header-right {{ display: flex; align-items: center; gap: 16px; }}
 .user-info {{ font-size: 14px; opacity: 0.9; }}
 .logout-btn {{ background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
                padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; }}
 .logout-btn:hover {{ background: rgba(255,255,255,0.25); }}
+
+/* Nav Tabs */
+.nav-tabs {{ display: flex; gap: 8px; margin-left: 32px; flex: 1; }}
+.nav-tab {{ color: rgba(255,255,255,0.7); text-decoration: none; padding: 6px 16px; border-radius: 6px; font-weight: 600; font-size: 14px; transition: all 0.3s; }}
+.nav-tab:hover {{ color: white; background: rgba(255,255,255,0.1); }}
+.nav-tab.active {{ color: #0f3460; background: white; }}
 
 /* Top section — Upload/Process + Annual Data */
 .top-section {{ padding: 16px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
@@ -573,7 +580,11 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
 <body>
 
 <div class="header">
-  <h1>AntiGravity SAP Portal</h1>
+  <h1>AntiGravity</h1>
+  <div class="nav-tabs">
+    <a href="/" class="nav-tab active">SAP Portal</a>
+    <a href="/payroll" class="nav-tab">Payroll</a>
+  </div>
   <div class="header-right">
     <span class="user-info">Welcome, {session["fullname"]}</span>
     <a href="/logout" class="logout-btn">Sign Out</a>
@@ -679,7 +690,7 @@ function uploadFile(file) {{
   const formData = new FormData();
   formData.append('file', file);
 
-  fetch('/upload', {{ method: 'POST', body: formData }})
+  fetch('/upload-sap', {{ method: 'POST', body: formData }})
     .then(r => r.json())
     .then(data => {{
       const status = item.querySelector('.status');
@@ -708,7 +719,7 @@ function processFiles(force) {{
   log.textContent = 'Processing...\\n';
   result.style.display = 'none';
 
-  fetch('/process' + (force ? '?force=1' : ''), {{ method: 'POST' }})
+  fetch('/process-sap' + (force ? '?force=1' : ''), {{ method: 'POST' }})
     .then(r => r.json())
     .then(data => {{
       log.textContent = data.log || 'Done.';
@@ -735,6 +746,64 @@ function processFiles(force) {{
     }});
 }}
 </script>
+</script>
+</body>
+</html>"""
+
+
+def payroll_tab_page(session):
+    payroll_port = os.environ.get("AG_PAYROLL_PORT", "8001")
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AntiGravity Portal - Payroll</title>
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5;
+       display: flex; flex-direction: column; min-height: 100vh; margin: 0; }}
+
+/* Header */
+.header {{ background: linear-gradient(135deg, #0f3460, #1a4a8a); color: white;
+           padding: 14px 32px; display: flex; align-items: center; justify-content: space-between;
+           box-shadow: 0 2px 10px rgba(0,0,0,0.15); flex-shrink: 0; z-index: 100; position: relative; }}
+.header h1 {{ font-size: 20px; }}
+.header-right {{ display: flex; align-items: center; gap: 16px; }}
+.user-info {{ font-size: 14px; opacity: 0.9; }}
+.logout-btn {{ background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
+               padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 13px; }}
+.logout-btn:hover {{ background: rgba(255,255,255,0.25); }}
+
+/* Nav Tabs */
+.nav-tabs {{ display: flex; gap: 8px; margin-left: 32px; flex: 1; }}
+.nav-tab {{ color: rgba(255,255,255,0.7); text-decoration: none; padding: 6px 16px; border-radius: 6px; font-weight: 600; font-size: 14px; transition: all 0.3s; }}
+.nav-tab:hover {{ color: white; background: rgba(255,255,255,0.1); }}
+.nav-tab.active {{ color: #0f3460; background: white; }}
+
+/* Iframe container - full viewport minus header */
+.iframe-container {{ display: block; width: 100%; height: calc(100vh - 60px); overflow: hidden; }}
+iframe {{ width: 100%; height: 100%; border: none; display: block; }}
+</style>
+</head>
+<body style="overflow: hidden;">
+
+<div class="header">
+  <h1>AntiGravity</h1>
+  <div class="nav-tabs">
+    <a href="/" class="nav-tab">SAP Portal</a>
+    <a href="/payroll" class="nav-tab active">Payroll</a>
+  </div>
+  <div class="header-right">
+    <span class="user-info">Welcome, {session["fullname"]}</span>
+    <a href="/logout" class="logout-btn">Sign Out</a>
+  </div>
+</div>
+
+<div class="iframe-container">
+  <iframe id="payrollFrame" src="/payroll-app"></iframe>
+</div>
+
 </body>
 </html>"""
 
@@ -790,6 +859,13 @@ class PortalHandler(BaseHTTPRequestHandler):
                     self._redirect("/login")
                 else:
                     self._send(200, login_page())
+            return
+
+        if path == "/payroll":
+            session = self._require_auth()
+            if not session:
+                return
+            self._send(200, payroll_tab_page(session))
             return
 
         if path == "/logout":
@@ -978,11 +1054,11 @@ def main():
         print("  WARNING: No users found! Create users.xlsx first.")
 
     print()
-    print(f"  Starting server on http://localhost:{PORT}")
+    print(f"  Starting server on http://{HOST if HOST != '0.0.0.0' else 'localhost'}:{PORT}")
     print(f"  Press Ctrl+C to stop")
     print("=" * 60)
 
-    server = HTTPServer(("0.0.0.0", PORT), PortalHandler)
+    server = HTTPServer((HOST, PORT), PortalHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

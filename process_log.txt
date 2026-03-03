@@ -204,3 +204,171 @@
 2026-03-02 19:26:46  INFO      ------------------------------------------------------------
 2026-03-02 19:26:46  INFO      Done.  Processed: 33  |  Skipped (unchanged): 0  |  Errors: 0
 2026-03-02 19:26:46  INFO      ============================================================
+2026-03-03 17:33:52  INFO      Portal processing: found 33 input file(s)
+2026-03-03 17:33:52  INFO      Processing: BS BARWOOD JAN 26 ANNUAL.xlsx → BS / BARWOOD / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/BARWOOD Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS CHALLMC JAN 26 ANNUAL.xlsx → BS / CHALLMC / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/CHALLMC Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS CHALLPG JAN 26 ANNUAL.xlsx → BS / CHALLPG / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/CHALLPG Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS ITCURVES JAN 26 ANNUAL.xlsx → BS / ITCURVES / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/ITCURVES Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS REG-CAB JAN 26 ANNUAL.xlsx → BS / REG-CAB / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-CAB Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS REG-FLEET JAN 26 ANNUAL.xlsx → BS / REG-FLEET / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-FLEET Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS REG-LEASE JAN 26 ANNUAL.xlsx → BS / REG-LEASE / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-LEASE Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: BS TRANSITGRP JAN 26 ANNUAL.xlsx → BS / TRANSITGRP / January 2026
+2026-03-03 17:33:53  INFO        ✓ BS PDF → Bal-Sht Jan 26/TRANSITGRP Jan 26.pdf
+2026-03-03 17:33:53  INFO      Processing: PL BARWOOD JAN 26 ANNUAL.xlsx → PL / BARWOOD / January 2026
+2026-03-03 17:33:53  INFO        ✓ PL PDF → P&L Jan 26/BARWOOD Jan 26.pdf
+2026-03-03 17:33:53  INFO        ✓ Aggregate updated — BARWOOD / January 2026
+2026-03-03 17:33:53  INFO      Processing: PL CHALLMC JAN 26 ANNUAL.xlsx → PL / CHALLMC / January 2026
+2026-03-03 17:33:53  INFO        ✓ PL PDF → P&L Jan 26/CHALLMC Jan 26.pdf
+2026-03-03 17:33:53  INFO        ✓ Aggregate updated — CHALLMC / January 2026
+2026-03-03 17:33:53  INFO      Processing: PL CHALLPG JAN 26 ANNUAL.xlsx → PL / CHALLPG / January 2026
+2026-03-03 17:33:53  INFO        ✓ PL PDF → P&L Jan 26/CHALLPG Jan 26.pdf
+2026-03-03 17:33:53  INFO        ✓ Aggregate updated — CHALLPG / January 2026
+2026-03-03 17:33:53  INFO      Processing: PL ITCURVES JAN 26 ANNUAL.xlsx → PL / ITCURVES / January 2026
+2026-03-03 17:33:53  INFO        ✓ PL PDF → P&L Jan 26/ITCURVES Jan 26.pdf
+2026-03-03 17:33:53  INFO        ✓ Aggregate updated — ITCURVES / January 2026
+2026-03-03 17:33:53  INFO      Processing: PL REG-CAB JAN 26 ANNUAL.xlsx → PL / REG-CAB / January 2026
+2026-03-03 17:33:53  INFO        ✓ PL PDF → P&L Jan 26/REG-CAB Jan 26.pdf
+2026-03-03 17:33:53  INFO        ✓ Aggregate updated — REG-CAB / January 2026
+2026-03-03 17:33:53  INFO      Processing: PL REG-FLEET JAN 26 ANNUAL.xlsx → PL / REG-FLEET / January 2026
+2026-03-03 17:33:53  INFO        ✓ PL PDF → P&L Jan 26/REG-FLEET Jan 26.pdf
+2026-03-03 17:33:54  INFO        ✓ Aggregate updated — REG-FLEET / January 2026
+2026-03-03 17:33:54  INFO      Processing: PL REG-LEASE JAN 26 ANNUAL.xlsx → PL / REG-LEASE / January 2026
+2026-03-03 17:33:54  INFO        ✓ PL PDF → P&L Jan 26/REG-LEASE Jan 26.pdf
+2026-03-03 17:33:54  INFO        ✓ Aggregate updated — REG-LEASE / January 2026
+2026-03-03 17:33:54  INFO      Processing: PL TRANSITGRP JAN 26 ANNUAL.xlsx → PL / TRANSITGRP / January 2026
+2026-03-03 17:33:54  INFO        ✓ PL PDF → P&L Jan 26/TRANSITGRP Jan 26.pdf
+2026-03-03 17:33:54  INFO        ✓ Aggregate updated — TRANSITGRP / January 2026
+2026-03-03 17:33:54  INFO      Processing: BS BARWOOD FEB 26 ANNUAL.xlsx → BS / BARWOOD / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/BARWOOD Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS CHALLMC FEB 26 ANNUAL.xlsx → BS / CHALLMC / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/CHALLMC Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS CHALLPG FEB 26 ANNUAL.xlsx → BS / CHALLPG / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/CHALLPG Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS ITCURVES FEB 26 ANNUAL.xlsx → BS / ITCURVES / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/ITCURVES Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS REG-CAB FEB 26 ANNUAL.xlsx → BS / REG-CAB / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-CAB Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS REG-FLEET FEB 26 ANNUAL.xlsx → BS / REG-FLEET / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-FLEET Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS REG-LEASE FEB 26 ANNUAL.xlsx → BS / REG-LEASE / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-LEASE Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: BS TRANSITGRP FEB 26 ANNUAL.xlsx → BS / TRANSITGRP / February 2026
+2026-03-03 17:33:54  INFO        ✓ BS PDF → Bal-Sht Feb 26/TRANSITGRP Feb 26.pdf
+2026-03-03 17:33:54  INFO      Processing: PL BARWOOD Feb 26 Annual.xlsx → PL / BARWOOD / February 2026
+2026-03-03 17:33:54  INFO        ✓ PL PDF → P&L Feb 26/BARWOOD Feb 26.pdf
+2026-03-03 17:33:54  INFO        ✓ Aggregate updated — BARWOOD / February 2026
+2026-03-03 17:33:54  INFO      Processing: PL CHALLMC Feb 26 Annual.xlsx → PL / CHALLMC / February 2026
+2026-03-03 17:33:54  INFO        ✓ PL PDF → P&L Feb 26/CHALLMC Feb 26.pdf
+2026-03-03 17:33:54  INFO        ✓ Aggregate updated — CHALLMC / February 2026
+2026-03-03 17:33:54  INFO      Processing: PL CHALLPG Feb 26 Annual.xlsx → PL / CHALLPG / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/CHALLPG Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — CHALLPG / February 2026
+2026-03-03 17:33:55  INFO      Processing: PL DISCOVERY Feb 26 Annual.xlsx → PL / DISCOVERY / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/DISCOVERY Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — DISCOVERY / February 2026
+2026-03-03 17:33:55  INFO      Processing: PL ITCURVES Feb 26 Annual.xlsx → PL / ITCURVES / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/ITCURVES Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — ITCURVES / February 2026
+2026-03-03 17:33:55  INFO      Processing: PL REG-CAB Feb 26 Annual.xlsx → PL / REG-CAB / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/REG-CAB Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — REG-CAB / February 2026
+2026-03-03 17:33:55  INFO      Processing: PL REG-FLEET Feb 26 Annual.xlsx → PL / REG-FLEET / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/REG-FLEET Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — REG-FLEET / February 2026
+2026-03-03 17:33:55  INFO      Processing: PL REG-LEASE Feb 26 Annual.xlsx → PL / REG-LEASE / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/REG-LEASE Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — REG-LEASE / February 2026
+2026-03-03 17:33:55  INFO      Processing: PL TRANSITGRP Feb 26 Annual.xlsx → PL / TRANSITGRP / February 2026
+2026-03-03 17:33:55  INFO        ✓ PL PDF → P&L Feb 26/TRANSITGRP Feb 26.pdf
+2026-03-03 17:33:55  INFO        ✓ Aggregate updated — TRANSITGRP / February 2026
+2026-03-03 17:34:02  INFO      Portal processing: found 33 input file(s)
+2026-03-03 17:34:02  INFO      Processing: BS BARWOOD JAN 26 ANNUAL.xlsx → BS / BARWOOD / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/BARWOOD Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS CHALLMC JAN 26 ANNUAL.xlsx → BS / CHALLMC / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/CHALLMC Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS CHALLPG JAN 26 ANNUAL.xlsx → BS / CHALLPG / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/CHALLPG Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS ITCURVES JAN 26 ANNUAL.xlsx → BS / ITCURVES / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/ITCURVES Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS REG-CAB JAN 26 ANNUAL.xlsx → BS / REG-CAB / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-CAB Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS REG-FLEET JAN 26 ANNUAL.xlsx → BS / REG-FLEET / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-FLEET Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS REG-LEASE JAN 26 ANNUAL.xlsx → BS / REG-LEASE / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/REG-LEASE Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: BS TRANSITGRP JAN 26 ANNUAL.xlsx → BS / TRANSITGRP / January 2026
+2026-03-03 17:34:03  INFO        ✓ BS PDF → Bal-Sht Jan 26/TRANSITGRP Jan 26.pdf
+2026-03-03 17:34:03  INFO      Processing: PL BARWOOD JAN 26 ANNUAL.xlsx → PL / BARWOOD / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/BARWOOD Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — BARWOOD / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL CHALLMC JAN 26 ANNUAL.xlsx → PL / CHALLMC / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/CHALLMC Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — CHALLMC / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL CHALLPG JAN 26 ANNUAL.xlsx → PL / CHALLPG / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/CHALLPG Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — CHALLPG / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL ITCURVES JAN 26 ANNUAL.xlsx → PL / ITCURVES / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/ITCURVES Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — ITCURVES / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL REG-CAB JAN 26 ANNUAL.xlsx → PL / REG-CAB / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/REG-CAB Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — REG-CAB / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL REG-FLEET JAN 26 ANNUAL.xlsx → PL / REG-FLEET / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/REG-FLEET Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — REG-FLEET / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL REG-LEASE JAN 26 ANNUAL.xlsx → PL / REG-LEASE / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/REG-LEASE Jan 26.pdf
+2026-03-03 17:34:03  INFO        ✓ Aggregate updated — REG-LEASE / January 2026
+2026-03-03 17:34:03  INFO      Processing: PL TRANSITGRP JAN 26 ANNUAL.xlsx → PL / TRANSITGRP / January 2026
+2026-03-03 17:34:03  INFO        ✓ PL PDF → P&L Jan 26/TRANSITGRP Jan 26.pdf
+2026-03-03 17:34:04  INFO        ✓ Aggregate updated — TRANSITGRP / January 2026
+2026-03-03 17:34:04  INFO      Processing: BS BARWOOD FEB 26 ANNUAL.xlsx → BS / BARWOOD / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/BARWOOD Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS CHALLMC FEB 26 ANNUAL.xlsx → BS / CHALLMC / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/CHALLMC Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS CHALLPG FEB 26 ANNUAL.xlsx → BS / CHALLPG / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/CHALLPG Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS ITCURVES FEB 26 ANNUAL.xlsx → BS / ITCURVES / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/ITCURVES Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS REG-CAB FEB 26 ANNUAL.xlsx → BS / REG-CAB / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-CAB Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS REG-FLEET FEB 26 ANNUAL.xlsx → BS / REG-FLEET / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-FLEET Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS REG-LEASE FEB 26 ANNUAL.xlsx → BS / REG-LEASE / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/REG-LEASE Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: BS TRANSITGRP FEB 26 ANNUAL.xlsx → BS / TRANSITGRP / February 2026
+2026-03-03 17:34:04  INFO        ✓ BS PDF → Bal-Sht Feb 26/TRANSITGRP Feb 26.pdf
+2026-03-03 17:34:04  INFO      Processing: PL BARWOOD Feb 26 Annual.xlsx → PL / BARWOOD / February 2026
+2026-03-03 17:34:04  INFO        ✓ PL PDF → P&L Feb 26/BARWOOD Feb 26.pdf
+2026-03-03 17:34:04  INFO        ✓ Aggregate updated — BARWOOD / February 2026
+2026-03-03 17:34:04  INFO      Processing: PL CHALLMC Feb 26 Annual.xlsx → PL / CHALLMC / February 2026
+2026-03-03 17:34:04  INFO        ✓ PL PDF → P&L Feb 26/CHALLMC Feb 26.pdf
+2026-03-03 17:34:04  INFO        ✓ Aggregate updated — CHALLMC / February 2026
+2026-03-03 17:34:04  INFO      Processing: PL CHALLPG Feb 26 Annual.xlsx → PL / CHALLPG / February 2026
+2026-03-03 17:34:04  INFO        ✓ PL PDF → P&L Feb 26/CHALLPG Feb 26.pdf
+2026-03-03 17:34:04  INFO        ✓ Aggregate updated — CHALLPG / February 2026
+2026-03-03 17:34:04  INFO      Processing: PL DISCOVERY Feb 26 Annual.xlsx → PL / DISCOVERY / February 2026
+2026-03-03 17:34:04  INFO        ✓ PL PDF → P&L Feb 26/DISCOVERY Feb 26.pdf
+2026-03-03 17:34:04  INFO        ✓ Aggregate updated — DISCOVERY / February 2026
+2026-03-03 17:34:04  INFO      Processing: PL ITCURVES Feb 26 Annual.xlsx → PL / ITCURVES / February 2026
+2026-03-03 17:34:04  INFO        ✓ PL PDF → P&L Feb 26/ITCURVES Feb 26.pdf
+2026-03-03 17:34:04  INFO        ✓ Aggregate updated — ITCURVES / February 2026
+2026-03-03 17:34:04  INFO      Processing: PL REG-CAB Feb 26 Annual.xlsx → PL / REG-CAB / February 2026
+2026-03-03 17:34:04  INFO        ✓ PL PDF → P&L Feb 26/REG-CAB Feb 26.pdf
+2026-03-03 17:34:05  INFO        ✓ Aggregate updated — REG-CAB / February 2026
+2026-03-03 17:34:05  INFO      Processing: PL REG-FLEET Feb 26 Annual.xlsx → PL / REG-FLEET / February 2026
+2026-03-03 17:34:05  INFO        ✓ PL PDF → P&L Feb 26/REG-FLEET Feb 26.pdf
+2026-03-03 17:34:05  INFO        ✓ Aggregate updated — REG-FLEET / February 2026
+2026-03-03 17:34:05  INFO      Processing: PL REG-LEASE Feb 26 Annual.xlsx → PL / REG-LEASE / February 2026
+2026-03-03 17:34:05  INFO        ✓ PL PDF → P&L Feb 26/REG-LEASE Feb 26.pdf
+2026-03-03 17:34:05  INFO        ✓ Aggregate updated — REG-LEASE / February 2026
+2026-03-03 17:34:05  INFO      Processing: PL TRANSITGRP Feb 26 Annual.xlsx → PL / TRANSITGRP / February 2026
+2026-03-03 17:34:05  INFO        ✓ PL PDF → P&L Feb 26/TRANSITGRP Feb 26.pdf
+2026-03-03 17:34:05  INFO        ✓ Aggregate updated — TRANSITGRP / February 2026

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Data Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .branding {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .blue-header {
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 24px;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .blue-header h2 {
+            font-weight: 700;
+            font-size: 0.875rem;
+            color: #334155;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .month-header {
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .btn-blue {
+            background-color: #1d4ed8;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .btn-blue:hover {
+            background-color: #1e40af;
+        }
+
+        .btn-orange {
+            background-color: #f97316;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .btn-orange:hover {
+            background-color: #ea580c;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .grid-header {
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .grid-row:nth-child(even) {
+            background: #fcfcfc;
+        }
+
+        .grid-cell {
+            border-right: 1px solid #f1f5f9;
+        }
+
+        .tab-active {
+            background: #1d4ed8;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="custom-scrollbar">
+    <div class="max-w-[1700px] mx-auto p-6 space-y-6">
+        <!-- Top Section -->
+        <div class="grid grid-cols-12 gap-6">
+            <!-- Upload & Process -->
+            <div class="col-span-12 lg:col-span-6 card">
+                <div class="blue-header flex justify-between items-center">
+                    <h2>Upload & Process</h2>
+                </div>
+                <div class="p-6 space-y-4">
+                    <label class="block cursor-pointer">
+                        <div id="drop-zone"
+                            class="border-2 border-dashed border-slate-300 rounded-xl p-10 flex flex-col items-center justify-center gap-3 hover:bg-slate-50 transition-colors">
+                            <input type="file" id="pdf-upload" class="hidden" accept=".pdf"
+                                onchange="handleFileUpload(event)">
+                            <div class="p-4 bg-amber-100 rounded-2xl text-amber-600 pointer-events-none">
+                                <i data-lucide="folder" class="w-10 h-10 fill-amber-500"></i>
+                            </div>
+                            <div class="text-center pointer-events-none">
+                                <p class="font-bold text-slate-700">Drag & Drop Files Here</p>
+                                <p class="text-xs text-slate-500">Accepts .pdf files for processing</p>
+                            </div>
+                        </div>
+                    </label>
+                    <div class="flex gap-3">
+                        <button class="btn-blue px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2"
+                            onclick="document.getElementById('pdf-upload').click()">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Process New Files
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Date & Summary -->
+            <div class="col-span-12 lg:col-span-6 card flex flex-col">
+                <div class="blue-header flex justify-between items-center">
+                    <h2>Target Date & Summary</h2>
+                </div>
+                <div class="p-6 grid grid-cols-2 gap-6 flex-grow">
+                    <div class="flex flex-col">
+                        <div class="space-y-1">
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payroll Target Date
+                            </p>
+                            <select id="date-select" onchange="onDateChange()"
+                                class="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500/20">
+                                <option value="">Select Date</option>
+                            </select>
+                        </div>
+                        <div class="mt-auto pt-6">
+                            <button onclick="generatePayroll()"
+                                class="w-full bg-blue-600 border border-blue-400 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all text-center">
+                                Generate Payroll
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-4">
+                        <div class="p-4 bg-blue-50/50 border border-blue-100 rounded-xl">
+                            <p class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Net Payable Amount
+                            </p>
+                            <p id="sum-net" class="text-3xl font-black text-blue-700">$0.00</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-1 p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Debit</p>
+                                <p id="sum-debit" class="text-lg font-bold text-slate-900 truncate" title="$0.00">$0.00
+                                </p>
+                            </div>
+                            <div class="space-y-1 p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Credit
+                                </p>
+                                <p id="sum-credit" class="text-lg font-bold text-slate-900 truncate" title="$0.00">$0.00
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Data View (Grid) -->
+        <div class="card overflow-hidden flex flex-col min-h-[500px]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex gap-2">
+                    <button onclick="switchView('source')" id="btn-source"
+                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm tab-active">Source
+                        Data</button>
+                    <button onclick="switchView('final')" id="btn-final"
+                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Final
+                        Payroll</button>
+                </div>
+                <div id="sheet-selector" class="flex gap-2 overflow-x-auto no-scrollbar max-w-[800px]">
+                    <!-- Tabs injected here -->
+                </div>
+            </div>
+            <div class="flex-grow overflow-auto custom-scrollbar relative" style="height: 500px;">
+                <table id="data-table" class="w-full text-sm text-left border-collapse"></table>
+                <div id="empty-state"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-white">
+                    <i data-lucide="table" class="w-16 h-16 mb-4 opacity-20"></i>
+                    <p class="font-bold text-lg">No Data Available</p>
+                    <p class="text-sm">Upload a file or select a report from the list below</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: File Explorers -->
+        <div class="grid grid-cols-12 gap-6">
+            <!-- Output Reports -->
+            <div class="col-span-12 lg:col-span-6 card h-[500px] flex flex-col">
+                <div class="blue-header flex justify-between items-center">
+                    <h2>Payroll</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleAll('output-list', true)"
+                            class="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded transition-colors font-bold">Expand
+                            All</button>
+                        <button onclick="toggleAll('output-list', false)"
+                            class="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded transition-colors font-bold">Collapse
+                            All</button>
+                        <button onclick="fetchFiles()"
+                            class="bg-slate-800 text-white px-3 py-1.5 ml-1 rounded-md text-xs font-bold hover:bg-slate-700 flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div id="output-list" class="flex-grow overflow-y-auto custom-scrollbar p-0">
+                    <p class="text-center py-20 text-slate-400 text-sm">Loading reports...</p>
+                </div>
+            </div>
+
+            <!-- Input Files -->
+            <div class="col-span-12 lg:col-span-6 card h-[500px] flex flex-col">
+                <div class="blue-header flex justify-between items-center">
+                    <h2>Department Summary Upload</h2>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleAll('input-list', true)"
+                            class="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded transition-colors font-bold">Expand
+                            All</button>
+                        <button onclick="toggleAll('input-list', false)"
+                            class="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded transition-colors font-bold">Collapse
+                            All</button>
+                    </div>
+                </div>
+                <div id="input-list" class="flex-grow overflow-y-auto custom-scrollbar p-0">
+                    <p class="text-center py-20 text-slate-400 text-sm">Loading files...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spinner Overlay -->
+    <div id="loading-overlay"
+        class="fixed inset-0 bg-white/60 backdrop-blur-sm z-[100] hidden flex items-center justify-center">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
+            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-sm font-bold text-slate-700 animate-pulse">Processing Data...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-[200] flex flex-col gap-3"></div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let activeView = 'source';
+        let sourceSheets = [];
+        let finalSheets = [];
+        let activeSheet = null;
+        let availableDates = [];
+
+        function toggleAll(containerId, expand) {
+            const container = document.getElementById(containerId);
+            const lists = container.querySelectorAll('.items-list');
+            const icons = container.querySelectorAll('.chevron-icon');
+
+            lists.forEach(list => {
+                if (expand) list.classList.remove('hidden');
+                else list.classList.add('hidden');
+            });
+
+            icons.forEach(icon => {
+                icon.style.transform = expand ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+        }
+
+        lucide.createIcons();
+        fetchFiles();
+
+        // Drag and Drop Logic
+        const dropZone = document.getElementById('drop-zone');
+        if (dropZone) {
+            ['dragover', 'dragenter'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('bg-blue-50', 'border-blue-400');
+                }, false);
+            });
+
+            ['dragleave', 'dragend'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('bg-blue-50', 'border-blue-400');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('bg-blue-50', 'border-blue-400');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileUpload({ target: { files: files } });
+                }
+            }, false);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading-overlay').classList.toggle('hidden', !show);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            // Define styles based on type
+            const isError = type === 'error';
+            const bgClass = isError ? 'bg-red-50' : 'bg-green-50';
+            const borderClass = isError ? 'border-red-200' : 'border-green-200';
+            const textClass = isError ? 'text-red-700' : 'text-green-700';
+            const iconName = isError ? 'alert-circle' : 'check-circle';
+            const iconColor = isError ? 'text-red-500' : 'text-green-500';
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg transform transition-all duration-300 translate-x-full opacity-0 ${bgClass} ${borderClass}`;
+
+            toast.innerHTML = `
+                <i data-lucide="${iconName}" class="w-5 h-5 ${iconColor}"></i>
+                <span class="text-sm font-bold ${textClass}">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons({ root: toast });
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            // Animate out and remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        async function fetchFiles() {
+            try {
+                const res = await fetch(`${API_BASE}/list-files`);
+                const data = await res.json();
+                renderFiles(data.inputs, 'input-list', 'pdf');
+                renderFiles(data.outputs, 'output-list', 'excel');
+                document.getElementById('input-count').textContent = `${data.inputs.length} file(s)`;
+            } catch (err) {
+                console.error("Failed to fetch files:", err);
+            }
+        }
+
+        async function downloadFile(filename) {
+            try {
+                const response = await fetch(`${API_BASE}/download-file?filename=${encodeURIComponent(filename)}`);
+                if (!response.ok) throw new Error('Download failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (err) {
+                console.error("Download error:", err);
+                showToast("Could not download file. Please check if the server is running.", "error");
+            }
+        }
+
+        function renderFiles(files, containerId, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (!files || files.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-slate-400 text-sm">No ${type === 'pdf' ? 'uploads' : 'reports'} yet</div>`;
+                return;
+            }
+
+            // Group by date found in filename, fallback to mtime
+            const groups = {};
+            files.forEach(f => {
+                let displayDate = new Date(f.mtime * 1000);
+
+                // Try parsing MM-DD-YY from filename (e.g., 01-30-26)
+                const ddMatch = f.name.match(/(\d{2})-(\d{2})-(\d{2})/);
+                if (ddMatch) {
+                    const month = parseInt(ddMatch[1]) - 1;
+                    const day = parseInt(ddMatch[2]);
+                    const year = 2000 + parseInt(ddMatch[3]);
+                    displayDate = new Date(year, month, day);
+                } else {
+                    // Try parsing Month Name (e.g., January 2026)
+                    const monthsNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                    const monthMatch = monthsNames.find(m => f.name.includes(m));
+                    if (monthMatch) {
+                        const yearMatch = f.name.match(/20\d{2}/);
+                        const year = yearMatch ? parseInt(yearMatch[0]) : 2026;
+                        displayDate = new Date(year, monthsNames.indexOf(monthMatch), 1);
+                    }
+                }
+
+                const monthYear = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+                if (!groups[monthYear]) groups[monthYear] = { date: displayDate, files: [] };
+                groups[monthYear].files.push(f);
+            });
+
+            // Sort months (newest first)
+            const sortedMonthKeys = Object.keys(groups).sort((a, b) => groups[b].date - groups[a].date);
+
+            sortedMonthKeys.forEach((key, gIdx) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = "mb-1 border-b border-slate-50";
+
+                const groupHeader = document.createElement('div');
+                groupHeader.className = "px-6 py-4 flex justify-between items-center hover:bg-slate-50 cursor-pointer transition-colors";
+                groupHeader.onclick = () => {
+                    const list = groupDiv.querySelector('.items-list');
+                    const icon = groupDiv.querySelector('.chevron-icon');
+                    list.classList.toggle('hidden');
+                    icon.style.transform = list.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                };
+
+                groupHeader.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform chevron-icon"></i>
+                        <span class="text-sm font-bold text-slate-700">${key}</span>
+                    </div>
+                    <span class="bg-slate-800 text-white text-[10px] font-black px-2 py-0.5 rounded-full">${groups[key].files.length}</span>
+                `;
+
+                const itemsList = document.createElement('div');
+                itemsList.className = "bg-white items-list hidden";
+
+                // Sort files within the group alphabetically/by name
+                groups[key].files.sort((a, b) => b.name.localeCompare(a.name));
+
+                groups[key].files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = "px-10 py-3 border-b border-slate-50 flex justify-between items-center hover:bg-blue-50/50 transition-colors group";
+                    const isPayroll = file.name.startsWith("PR ");
+
+                    const actionButtons = type === 'pdf'
+                        ? `<button onclick="reprocessFile('${file.name}')" class="bg-amber-500 text-white px-3 py-1 rounded text-[10px] font-bold flex items-center gap-1"><i data-lucide="refresh-cw" class="w-3 h-3"></i> Reprocess</button>
+                           <button onclick="downloadFile('${file.name}')" class="bg-blue-500 text-white px-3 py-1 rounded text-[10px] font-bold">Download</button>`
+                        : `<button onclick="selectFile('${file.name}', '${type}')" class="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">View</button>
+                           <button onclick="downloadFile('${file.name}')" class="bg-blue-500 text-white px-3 py-1 rounded text-[10px] font-bold">Download</button>`;
+
+                    // Format processed time
+                    const processedTime = new Date(file.mtime * 1000).toLocaleString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                        hour: 'numeric', minute: '2-digit', hour12: true
+                    });
+
+                    item.innerHTML = `
+                        <div class="flex flex-col pr-4">
+                            <span class="text-xs font-medium text-slate-800 break-words">${file.name}</span>
+                            <span class="text-[10px] font-bold text-slate-400 mt-0.5"><i data-lucide="clock" class="w-3 h-3 inline-block mr-1 align-text-bottom"></i>Processed: ${processedTime}</span>
+                        </div>
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            ${actionButtons}
+                        </div>
+                    `;
+                    itemsList.appendChild(item);
+                    lucide.createIcons({ root: itemsList });
+                });
+
+                groupDiv.appendChild(groupHeader);
+                groupDiv.appendChild(itemsList);
+                container.appendChild(groupDiv);
+            });
+            lucide.createIcons();
+        }
+
+        async function selectFile(filename, type) {
+            if (type !== 'excel') return;
+
+            showLoading(true);
+            try {
+                const res = await fetch(`${API_BASE}/load-file?filename=${encodeURIComponent(filename)}`);
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    if (data.source === 'source') {
+                        sourceSheets = data.sheets;
+                        switchView('source', true);
+                    } else {
+                        finalSheets = data.sheets;
+                        switchView('final', true);
+                    }
+                    console.log(data.message);
+                } else {
+                    showToast("Error: " + data.message, "error");
+                }
+            } catch (err) {
+                console.error("Failed to load file:", err);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoading(true);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    availableDates = data.available_dates || [];
+                    sourceSheets = data.sheets || [];
+                    updateDateSelect(availableDates);
+                    populateSheets(sourceSheets);
+                    updateSummary(data.summary);
+                    fetchFiles();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Upload failed.", "error");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function reprocessFile(filename) {
+            showLoading(true);
+            try {
+                const res = await fetch(`${API_BASE}/reprocess`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename: filename })
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    availableDates = data.available_dates || [];
+                    sourceSheets = data.sheets || [];
+                    updateDateSelect(availableDates);
+                    populateSheets(sourceSheets);
+                    updateSummary(data.summary);
+                    fetchFiles();
+                    showToast(`Successfully reprocessed ${filename}`);
+                } else {
+                    showToast("Error: " + (data.error || data.detail), "error");
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Reprocess failed.", "error");
+            } finally {
+                showLoading(false);
+            }
+        }
+
+
+        function updateDateSelect(dates) {
+            const select = document.getElementById('date-select');
+            select.innerHTML = '<option value="">Select Date</option>';
+            dates.forEach(date => {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = date;
+                select.appendChild(opt);
+            });
+        }
+
+        function populateSheets(sheets) {
+            const container = document.getElementById('sheet-selector');
+            container.innerHTML = '';
+            sheets.forEach((sheet, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-1.5 rounded-full text-xs font-bold transition-all ${idx === 0 ? 'bg-blue-100 text-blue-700' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`;
+                btn.textContent = sheet;
+                btn.onclick = (e) => {
+                    const allBtns = container.querySelectorAll('button');
+                    allBtns.forEach(b => {
+                        b.classList.remove('bg-blue-100', 'text-blue-700');
+                        b.classList.add('bg-white', 'border', 'border-slate-200', 'text-slate-500');
+                    });
+                    btn.classList.add('bg-blue-100', 'text-blue-700');
+                    btn.classList.remove('bg-white', 'border', 'border-slate-200', 'text-slate-500');
+                    selectSheet(sheet);
+                };
+                container.appendChild(btn);
+            });
+            if (sheets.length > 0) selectSheet(sheets[0]);
+        }
+
+        async function selectSheet(sheetName) {
+            activeSheet = sheetName;
+            const endpoint = activeView === 'source' ? `/data/${encodeURIComponent(sheetName)}` : `/final-data/${encodeURIComponent(sheetName)}`;
+            try {
+                const res = await fetch(`${API_BASE}${endpoint}`);
+                const data = await res.json();
+                renderTable(data.columns, data.rowData);
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderTable(columns, rows) {
+            const table = document.getElementById('data-table');
+            const empty = document.getElementById('empty-state');
+            if (!rows.length) {
+                table.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            const thead = `<thead class="grid-header sticky top-0 z-10"><tr class="text-[10px] uppercase font-bold tracking-widest text-slate-400">
+                ${columns.map(c => `<th class="px-6 py-4 grid-cell min-w-[150px] font-bold">${c.headerName}</th>`).join('')}
+            </tr></thead>`;
+
+            const tbody = `<tbody>${rows.map((row, rIdx) => `<tr class="grid-row border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                ${columns.map(c => `
+                    <td class="px-6 py-3 text-slate-600 grid-cell min-w-[150px]">
+                        ${row[c.field] !== null ? row[c.field] : ''}
+                    </td>
+                `).join('')}
+            </tr>`).join('')}</tbody>`;
+
+            table.innerHTML = thead + tbody;
+        }
+
+        async function onDateChange() {
+            const date = document.getElementById('date-select').value;
+            if (!date) return;
+            try {
+                const res = await fetch(`${API_BASE}/get-summary?pay_date=${encodeURIComponent(date)}`);
+                const data = await res.json();
+                updateSummary(data);
+                if (activeView === 'final') generatePayroll();
+            } catch (err) { console.error(err); }
+        }
+
+        function updateSummary(sum) {
+            if (!sum) return;
+            document.getElementById('sum-debit').textContent = `$${sum.total_debit.toLocaleString()}`;
+            document.getElementById('sum-credit').textContent = `$${sum.total_credit.toLocaleString()}`;
+            document.getElementById('sum-net').textContent = `$${sum.net_payroll.toLocaleString()}`;
+        }
+
+        async function generatePayroll() {
+            const date = document.getElementById('date-select').value;
+            if (!date) {
+                showToast("Select a date first.", "error");
+                return;
+            }
+            try {
+                showLoading(true);
+                const res = await fetch(`${API_BASE}/generate-payroll`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target_date: date })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    updateSummary(data.summary);
+                    finalSheets = data.sheets || [];
+                    switchView('final', true);
+                    fetchFiles();
+                }
+            } catch (err) { console.error(err); } finally { showLoading(false); }
+        }
+
+        function switchView(view, skipAutoGenerate = false) {
+            activeView = view;
+            const btnS = document.getElementById('btn-source');
+            const btnF = document.getElementById('btn-final');
+            if (view === 'source') {
+                btnS.classList.add('tab-active'); btnS.classList.remove('bg-white', 'text-slate-600', 'border');
+                btnF.classList.remove('tab-active'); btnF.classList.add('bg-white', 'text-slate-600', 'border');
+            } else {
+                btnF.classList.add('tab-active'); btnF.classList.remove('bg-white', 'text-slate-600', 'border');
+                btnS.classList.remove('tab-active'); btnS.classList.add('bg-white', 'text-slate-600', 'border');
+                if (availableDates.length > 0 && !skipAutoGenerate) generatePayroll();
+            }
+            populateSheets(view === 'source' ? sourceSheets : finalSheets);
+        }
+    </script>
+</body>
+
+</html>
