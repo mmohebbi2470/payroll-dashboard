@@ -23,6 +23,11 @@ STATIC_DIR = os.path.join(BASE_DIR, "frontend")
 os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/payroll-app", StaticFiles(directory=STATIC_DIR, html=True), name="payroll-app")
 
+# Serve orders frontend static files
+ORDERS_STATIC = os.path.join(BASE_DIR, "frontend", "orders-app")
+os.makedirs(ORDERS_STATIC, exist_ok=True)
+app.mount("/orders-app", StaticFiles(directory=ORDERS_STATIC, html=True), name="orders-app")
+
 # --- IMPORT PORTAL LOGIC ---
 import sys
 if BASE_DIR not in sys.path:
@@ -35,23 +40,26 @@ def get_session_from_request(request: Request):
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return JSONResponse(status_code=204, content=None)
+    from starlette.responses import Response
+    return Response(status_code=204)
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def sap_index(request: Request):
     session = get_session_from_request(request)
     if session:
-        return portal.main_page(session)
+        html = portal.main_page(session)
+        return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
     return RedirectResponse(url="/login")
 
-@app.get("/login", response_class=HTMLResponse)
+@app.get("/login")
 async def get_login(request: Request):
     session = get_session_from_request(request)
     if session:
         return RedirectResponse(url="/")
-    return portal.login_page()
+    html = portal.login_page()
+    return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
 
-@app.post("/login", response_class=HTMLResponse)
+@app.post("/login")
 async def post_login(username: str = Form(""), password: str = Form("")):
     user = portal.authenticate(username, password)
     if user:
@@ -59,7 +67,8 @@ async def post_login(username: str = Form(""), password: str = Form("")):
         response = RedirectResponse(url="/", status_code=302)
         response.set_cookie(key="session", value=sid, max_age=portal.SESSION_DURATION, path="/", httponly=True)
         return response
-    return portal.login_page("Invalid username or password. Please try again.")
+    html = portal.login_page("Invalid username or password. Please try again.")
+    return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
 
 @app.get("/logout")
 async def logout(request: Request):
@@ -74,15 +83,23 @@ async def logout(request: Request):
     response.delete_cookie("session", path="/")
     return response
 
-@app.get("/payroll", response_class=HTMLResponse)
+@app.get("/payroll")
 async def get_payroll_tab(request: Request):
     session = get_session_from_request(request)
     if not session:
         return RedirectResponse(url="/login")
-    return portal.payroll_tab_page(session)
+    html = portal.payroll_tab_page(session)
+    return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
 
-@app.post("/upload-sap")
-async def upload_sap(request: Request, file: UploadFile = File(...)):
+@app.get("/orders")
+async def get_orders_tab(request: Request):
+    session = get_session_from_request(request)
+    if not session:
+        return RedirectResponse(url="/login")
+    html = portal.orders_tab_page(session)
+    return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
+
+async def _do_upload(request: Request, file: UploadFile):
     if not get_session_from_request(request):
         return JSONResponse(status_code=401, content={"success": False, "error": "Not logged in"})
     if not file.filename.lower().endswith(".xlsx"):
@@ -93,21 +110,62 @@ async def upload_sap(request: Request, file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
     return {"success": True, "file": file.filename}
 
-@app.post("/process-sap")
-async def process_sap(request: Request, force: bool = False):
+@app.post("/upload-sap")
+async def upload_sap(request: Request, file: UploadFile = File(...)):
+    return await _do_upload(request, file)
+
+@app.post("/upload")
+async def upload_alias(request: Request, file: UploadFile = File(...)):
+    return await _do_upload(request, file)
+
+
+async def _do_process(request: Request, force: bool):
     if not get_session_from_request(request):
         return JSONResponse(status_code=401, content={"error": "Not logged in"})
     try:
         results = portal.run_processing(force=force)
         return results
     except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e), "processed": [], "skipped": [], "errors": [{"file": "system", "error": str(e)}], "log": str(e)})
+        return JSONResponse(status_code=200, content={
+            "error": str(e), "processed": [], "skipped": [],
+            "errors": [{"file": "system", "error": str(e)}],
+            "log": f"ERROR: {str(e)}"
+        })
+
+@app.post("/process-sap")
+async def process_sap(request: Request, force: bool = False):
+    return await _do_process(request, force)
+
+@app.post("/process")
+async def process_alias(request: Request, force: bool = False):
+    return await _do_process(request, force)
+
 
 @app.get("/api/input-files-sap")
 async def api_input_files_sap(request: Request):
     if not get_session_from_request(request):
         return JSONResponse(status_code=401, content={"error": "Not logged in"})
     return portal.get_all_input_files()
+
+@app.get("/api/input-files")
+async def api_input_files_alias(request: Request):
+    if not get_session_from_request(request):
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    return portal.get_all_input_files()
+
+
+@app.get("/download-input/{filename}")
+async def download_input_file(request: Request, filename: str):
+    """Download an input Excel file — searches SAP Reports/Input Files/ recursively."""
+    if not get_session_from_request(request):
+        raise HTTPException(status_code=401, detail="Not logged in")
+    decoded = urllib.parse.unquote(filename)
+    for root, dirs, files in os.walk(portal.INPUT_DIR):
+        if decoded in files:
+            full_path = os.path.join(root, decoded)
+            return FileResponse(full_path, filename=decoded,
+                                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    raise HTTPException(status_code=404, detail=f"Input file not found: {decoded}")
 
 @app.get("/download-sap/{rel_path:path}")
 async def download_sap(request: Request, rel_path: str):
@@ -120,10 +178,12 @@ async def download_sap(request: Request, rel_path: str):
     raise HTTPException(status_code=404, detail="File not found")
 
 @app.get("/view-sap/{folder_name}/{file_name}")
+@app.get("/view/{folder_name}/{file_name}")
 async def view_sap(request: Request, folder_name: str, file_name: str):
     if not get_session_from_request(request):
         raise HTTPException(status_code=401, detail="Not logged in")
-    file_path = os.path.join(portal.BASE_FOLDER, urllib.parse.unquote(folder_name), urllib.parse.unquote(file_name))
+    # Files are now in SAP Reports/ subdirectory
+    file_path = os.path.join(portal.SAP_DIR, urllib.parse.unquote(folder_name), urllib.parse.unquote(file_name))
     real_path = os.path.realpath(file_path)
     if real_path.startswith(os.path.realpath(portal.BASE_FOLDER)) and os.path.isfile(real_path):
         media_type = "application/pdf" if file_name.lower().endswith(".pdf") else None
@@ -143,6 +203,33 @@ def format_date_long(date_str):
 def format_date_short(date_str):
     return date_str.replace("/", "-")
 
+def get_month_folder_from_filename(filename):
+    """Extract month folder name from filename date.
+    e.g. 'Department Summary 12.19.2026.pdf' → 'December 2026'
+         'PG January 2026 Department Summary_ALL_Tables_01-16-26.xlsx' → 'January 2026'
+    """
+    import calendar
+    # Try MM.DD.YYYY pattern (e.g. 12.19.2026)
+    m = re.search(r'(\d{1,2})\.(\d{1,2})\.(\d{4})', filename)
+    if m:
+        month_num = int(m.group(1))
+        year = int(m.group(3))
+        return f"{calendar.month_name[month_num]} {year}"
+    # Try MM-DD-YY pattern (e.g. 01-16-26)
+    m = re.search(r'(\d{2})[-/](\d{2})[-/](\d{2})', filename)
+    if m:
+        month_num = int(m.group(1))
+        year = 2000 + int(m.group(3))
+        return f"{calendar.month_name[month_num]} {year}"
+    # Try "Month YYYY" pattern (e.g. January 2026)
+    month_names = list(calendar.month_name)[1:]
+    for i, mname in enumerate(month_names, 1):
+        if mname in filename:
+            year_m = re.search(r'(20\d{2})', filename)
+            year = int(year_m.group(1)) if year_m else 2026
+            return f"{mname} {year}"
+    return None
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -150,8 +237,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploaddepartment")
-OUTPUT_DIR = os.path.join(BASE_DIR, "outputdepartment")
+# Middleware to prevent browser caching (fixes stale static files on remote stations)
+from starlette.middleware.base import BaseHTTPMiddleware
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        ct = response.headers.get("content-type", "")
+        if "text/html" in ct or "javascript" in ct or "text/css" in ct:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+app.add_middleware(NoCacheMiddleware)
+
+UPLOAD_DIR = os.path.join(BASE_DIR, "Payroll", "uploaddepartment")
+OUTPUT_DIR = os.path.join(BASE_DIR, "Payroll", "outputdepartment")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -168,7 +268,7 @@ def load_module_from_path(path: str, name_hint: str):
 
 MASTER_SCRIPT = os.path.join(BASE_DIR, "backend", "master_department_summary_to_excel_ALL_FIXED_v2.py")
 PAYROLL_SCRIPT = os.path.join(BASE_DIR, "backend", "auto_fill_vijay_payroll_from_all_tables_v8_final.py")
-PAYROLL_TEMPLATE = os.path.join(BASE_DIR, "Vijay Payroll.xlsx")
+PAYROLL_TEMPLATE = os.path.join(BASE_DIR, "Payroll", "Vijay Payroll.xlsx")
 
 # State management (simplified for now, using a global variable/dict to store data in memory)
 current_data: Dict[str, pd.DataFrame] = {}
@@ -182,7 +282,7 @@ class CellUpdate(BaseModel):
     column: str  # Changed from col to match frontend
     value: Any
 
-@app.post("/upload")
+@app.post("/upload-payroll")
 async def upload_pdf(file: UploadFile = File(...)):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
@@ -259,19 +359,29 @@ async def upload_pdf(file: UploadFile = File(...)):
 
         original_base = os.path.splitext(file.filename)[0]
         new_filename = f"DS {original_base}.xlsx"
-        new_path = os.path.join(OUTPUT_DIR, new_filename)
-        
-        # If a file with that name already exists, we might need to handle it 
-        # (shutil.move will overwrite by default which is fine here)
+
+        # Determine output subfolder from date in filename (e.g. "December 2026")
+        month_folder_name = get_month_folder_from_filename(file.filename)
+        if month_folder_name:
+            out_dir = os.path.join(OUTPUT_DIR, month_folder_name)
+        else:
+            out_dir = OUTPUT_DIR
+        os.makedirs(out_dir, exist_ok=True)
+
+        new_path = os.path.join(out_dir, new_filename)
+
+        # Move output to month folder, replacing any existing file with same name
+        if os.path.exists(new_path):
+            os.remove(new_path)
         if os.path.exists(output_xlsx) and output_xlsx != new_path:
             shutil.move(output_xlsx, new_path)
             output_xlsx = new_path
-            current_output_xlsx = output_xlsx # Update global path
+            current_output_xlsx = output_xlsx
 
         return {
-            "status": "success", 
-            "input_file": file.filename,    # Aligning keys with frontend
-            "output_file": output_xlsx,     # Aligning keys with frontend
+            "status": "success",
+            "input_file": file.filename,
+            "output_file": output_xlsx,
             "sheets": list(current_data.keys()),
             "available_dates": sorted(list(unique_dates)),
             "summary": calculate_actual_summary(sorted(list(unique_dates))[0] if unique_dates else "01/16/26")
@@ -351,8 +461,19 @@ async def reprocess_pdf(request: Request):
 
         original_base = os.path.splitext(filename)[0]
         new_filename = f"DS {original_base}.xlsx"
-        new_path = os.path.join(OUTPUT_DIR, new_filename)
-        
+
+        # Determine output subfolder from date in filename
+        month_folder_name = get_month_folder_from_filename(filename)
+        if month_folder_name:
+            out_dir = os.path.join(OUTPUT_DIR, month_folder_name)
+        else:
+            out_dir = OUTPUT_DIR
+        os.makedirs(out_dir, exist_ok=True)
+
+        new_path = os.path.join(out_dir, new_filename)
+
+        if os.path.exists(new_path):
+            os.remove(new_path)
         if os.path.exists(output_xlsx) and output_xlsx != new_path:
             shutil.move(output_xlsx, new_path)
             output_xlsx = new_path
@@ -426,23 +547,82 @@ async def list_files():
             # Newest first
             return sorted(files, key=lambda x: x["mtime"], reverse=True)
 
+        def get_output_files_recursive(directory):
+            """Scan output dir and month subfolders for xlsx files."""
+            files = []
+            if not os.path.exists(directory):
+                return files
+            for item in os.listdir(directory):
+                full = os.path.join(directory, item)
+                if os.path.isfile(full) and item.endswith((".xlsx",)) and not item.startswith("~$"):
+                    files.append({
+                        "name": item,
+                        "path": full,
+                        "mtime": os.path.getmtime(full),
+                        "size": os.path.getsize(full),
+                        "folder": ""
+                    })
+                elif os.path.isdir(full):
+                    for f in os.listdir(full):
+                        fpath = os.path.join(full, f)
+                        if os.path.isfile(fpath) and f.endswith((".xlsx",)) and not f.startswith("~$"):
+                            files.append({
+                                "name": f,
+                                "path": fpath,
+                                "mtime": os.path.getmtime(fpath),
+                                "size": os.path.getsize(fpath),
+                                "folder": item
+                            })
+            return sorted(files, key=lambda x: x["mtime"], reverse=True)
+
         return {
             "inputs": get_files_with_mtime(UPLOAD_DIR),
-            "outputs": get_files_with_mtime(OUTPUT_DIR)
+            "outputs": get_output_files_recursive(OUTPUT_DIR)
         }
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+def find_file_in_output(filename):
+    """Search OUTPUT_DIR and its subfolders for a file by name."""
+    path = os.path.join(OUTPUT_DIR, filename)
+    if os.path.exists(path):
+        return path
+    # Search subfolders
+    for item in os.listdir(OUTPUT_DIR):
+        sub = os.path.join(OUTPUT_DIR, item)
+        if os.path.isdir(sub):
+            candidate = os.path.join(sub, filename)
+            if os.path.exists(candidate):
+                return candidate
+    return None
+
+def extract_dates_from_data(filename: str, data_dict: Dict[str, pd.DataFrame]) -> List[str]:
+    unique_dates = set()
+    fn_dates = re.findall(r"(\d{2}[-/]\d{2}[-/]\d{2})", filename)
+    for fd in fn_dates:
+        unique_dates.add(fd.replace("-", "/"))
+    for sheet, df in data_dict.items():
+        date_col = next((c for c in df.columns if str(c).upper() in ["CHECK DATE", "DATE"]), None)
+        if date_col:
+            vals = df[date_col].astype(str).unique()
+            for v in vals:
+                v_clean = str(v).strip()
+                if v_clean and v_clean not in ["0", "0.0", "nan", "None"]:
+                    if not any(x in v_clean.upper() for x in ["MTD", "QTD", "YTD", "TOTAL", "NET"]):
+                        if "/" in v_clean or "-" in v_clean:
+                            unique_dates.add(v_clean.replace("-", "/"))
+    return sorted(list(unique_dates))
+
 @app.get("/load-file")
 async def load_file(filename: str):
     """Loads a specific Excel file from outputs/ into memory."""
-    global current_data, final_payroll_data
-    path = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(path):
+    global current_data, final_payroll_data, current_output_xlsx
+    path = find_file_in_output(filename)
+    if not path:
         raise HTTPException(status_code=404, detail="File not found")
     try:
-        is_source = "Department Summary" in filename
+        is_source = "Department Summary" in filename or filename.startswith("DS ")
         xl = pd.ExcelFile(path)
         data_dict = {}
         for sheet in xl.sheet_names:
@@ -451,7 +631,16 @@ async def load_file(filename: str):
             data_dict[sheet] = df
         if is_source:
             current_data = data_dict
-            return {"status": "success", "source": "source", "sheets": list(data_dict.keys())}
+            current_output_xlsx = path
+            available_dates = extract_dates_from_data(filename, current_data)
+            summary = calculate_actual_summary(available_dates[0] if available_dates else "01/16/26")
+            return {
+                "status": "success", 
+                "source": "source", 
+                "sheets": list(data_dict.keys()),
+                "available_dates": available_dates,
+                "summary": summary
+            }
         else:
             final_payroll_data = data_dict
             return {"status": "success", "source": "final", "sheets": list(data_dict.keys())}
@@ -461,15 +650,14 @@ async def load_file(filename: str):
 
 @app.get("/download-file")
 async def download_any_file(filename: str):
-    """Downloads a specific file from outputs/ or uploads/."""
-    # Check outputs first, then uploads
-    path = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(path):
+    """Downloads a specific file from outputs/ (including subfolders) or uploads/."""
+    path = find_file_in_output(filename)
+    if not path:
         path = os.path.join(UPLOAD_DIR, filename)
-        
-    if not os.path.exists(path):
+
+    if not path or not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found")
-        
+
     return FileResponse(path, filename=filename)
 
 @app.get("/data/{sheet_name}")
@@ -528,7 +716,19 @@ async def generate_payroll(request: GenerateRequest):
             base_name = base_name[3:]
             
         short_date = format_date_short(pay_date)
-        payroll.OUTPUT_XLSX = os.path.join(OUTPUT_DIR, f"PR {base_name} {short_date}.xlsx")
+        # Put payroll output in month subfolder based on pay_date
+        pr_month_folder = format_date_long(pay_date)
+        if pr_month_folder and pr_month_folder != "Unknown Date":
+            pr_out_dir = os.path.join(OUTPUT_DIR, pr_month_folder)
+        else:
+            pr_out_dir = OUTPUT_DIR
+        os.makedirs(pr_out_dir, exist_ok=True)
+        pr_filename = f"PR {base_name} {short_date}.xlsx"
+        # Replace existing file with same name
+        pr_path = os.path.join(pr_out_dir, pr_filename)
+        if os.path.exists(pr_path):
+            os.remove(pr_path)
+        payroll.OUTPUT_XLSX = pr_path
         
         payroll.main()
         
@@ -618,7 +818,7 @@ async def get_final_sheet_data(sheet_name: str):
     actual_key = next((k for k in final_payroll_data.keys() if k.strip().upper() == target), None)
     
     if not actual_key:
-        raise HTTPException(status_code=404, detail="Sheet not found")
+        raise HTTPException(status_code=404, detail=f"Sheet '{sheet_name}' not found in final data. Available: {list(final_payroll_data.keys())}")
     
     df = final_payroll_data[actual_key].fillna(0)
     # Convert to JSON-friendly format
@@ -688,10 +888,35 @@ async def download_payroll(pay_date: str = None):
     latest_file = max(files, key=os.path.getctime)
     return FileResponse(latest_file, filename=os.path.basename(latest_file))
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  ORDERS BACKLOG — Mount orders API routes into this server
+# ═══════════════════════════════════════════════════════════════════════════════
+try:
+    # Add backend/ to path so orders.py can find its own database module
+    _backend_dir = os.path.join(BASE_DIR, "backend")
+    if _backend_dir not in sys.path:
+        sys.path.insert(0, _backend_dir)
+    from orders import app as orders_app
+    from database.db import init_db as orders_init_db
+
+    # Include all /api/* routes from orders backend
+    for route in orders_app.routes:
+        if hasattr(route, 'path') and route.path.startswith('/api/'):
+            app.routes.append(route)
+
+    # Initialize orders database on startup
+    @app.on_event("startup")
+    async def init_orders_db():
+        orders_init_db()
+        print("[payroll.py] Orders database initialized.")
+except ImportError as e:
+    print(f"[payroll.py] Orders module not loaded: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     import os
-    
+
     host = os.environ.get("AG_HOST", "0.0.0.0")
     port = int(os.environ.get("AG_PAYROLL_PORT", "8001"))
     

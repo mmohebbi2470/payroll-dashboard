@@ -286,13 +286,17 @@ def extract_subtables_from_block(page, page_idx, y0, y1):
             first = ln[0]["text"].strip()
             fu = first.upper().replace(" ", "")
 
-            if DATE_RE.match(first) or ROWLABEL_RE.match(first.upper()) or ROWLABEL_RE.match(fu):
+            is_date = DATE_RE.match(first)
+            is_summary = ROWLABEL_RE.match(first.upper()) or ROWLABEL_RE.match(fu)
+
+            # Skip MTD/QTD/YTD rows entirely — only keep actual
+            # payroll-date rows. This prevents page-break continuations
+            # from duplicating data when summary rows appear on the next page.
+            if is_summary:
+                continue
+
+            if is_date:
                 label = first
-                # If the first token isn't a valid date (e.g. MTD), try page-level date as fallback
-                if not DATE_RE.match(label):
-                    cd_fallback = get_check_date(page)
-                    if cd_fallback:
-                        label = cd_fallback
 
                 rowpos += 1
                 row = {"RowPos": rowpos, "Check Date": label, "_page": page_idx}
@@ -521,6 +525,7 @@ def run_one(pdf_path: str, out_path: str):
     master_src = subtables[master_idx].copy()
 
     master = master_src[["Check Date"] + [c for c in master_src.columns if c not in ("Check Date") and not c.startswith("_") and c != "RowPos"]]
+    master = master.drop_duplicates().reset_index(drop=True)
     master = add_occur(master).fillna(0.0)
 
     parts = [t for i, t in enumerate(subtables) if i != master_idx]
@@ -531,6 +536,7 @@ def run_one(pdf_path: str, out_path: str):
     for part in parts:
         part_clean = part.copy()
         part_clean = part_clean[["Check Date"] + [c for c in part_clean.columns if c not in ("Check Date") and not c.startswith("_") and c != "RowPos"]]
+        part_clean = part_clean.drop_duplicates().reset_index(drop=True)
         part_clean = add_occur(part_clean).fillna(0.0)
 
         if "ALL OTHER DEDUCTIONS" in part_clean.columns and "TOTAL" in part_clean.columns and "TOTAL (2)" not in part_clean.columns:

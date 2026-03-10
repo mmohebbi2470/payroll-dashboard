@@ -1,0 +1,8 @@
+fastapi
+pydantic
+pandas
+openpyxl
+pdfplumber
+uvicorn
+reportlab
+numpy

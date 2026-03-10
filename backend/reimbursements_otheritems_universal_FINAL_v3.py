@@ -306,7 +306,16 @@ def extract_subtables(page, page_idx, y0, y1):
                 continue
             first = ln[0]["text"].strip()
             fu = first.upper()
-            if DATE_RE.match(first) or ROWLABEL_RE.match(fu.replace(" ", "")) or ROWLABEL_RE.match(fu):
+            is_date = DATE_RE.match(first)
+            is_summary = ROWLABEL_RE.match(fu.replace(" ", "")) or ROWLABEL_RE.match(fu)
+
+            # Skip MTD/QTD/YTD rows entirely — only keep actual
+            # payroll-date rows. This prevents page-break continuations
+            # from duplicating data when summary rows appear on the next page.
+            if is_summary:
+                continue
+
+            if is_date:
                 row = {"Check Date": first, "_page": page_idx, "_table_top": float(check_ln[0]["top"])}
                 for c in col_mids:
                     row[c] = 0.0
@@ -498,6 +507,7 @@ def build_table(pdf_path: str, section_name: str) -> pd.DataFrame:
 
     for part in parts:
         part_clean = part[[c for c in part.columns if not c.startswith("_")]]
+        part_clean = part_clean.drop_duplicates().reset_index(drop=True)
         part_clean = add_occur(part_clean).fillna(0.0)
         master = merge_on_date_occur(master, part_clean)
         for c in master.columns:

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders Backlog</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f0f2f5; }
+  .tab-btn { padding: 8px 20px; border: none; cursor: pointer; font-size: 14px; font-weight: 600;
+             border-radius: 6px 6px 0 0; transition: all 0.2s; }
+  .tab-btn.active { background: white; color: #0f3460; border-bottom: 3px solid #0f3460; }
+  .tab-btn:not(.active) { background: #e2e8f0; color: #64748b; }
+  .tab-btn:not(.active):hover { background: #cbd5e1; }
+  .panel { display: none; background: white; border-radius: 0 8px 8px 8px; padding: 20px;
+           box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .panel.active { display: block; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-weight: 600;
+                   color: #475569; border-bottom: 2px solid #e2e8f0; }
+  .data-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+  .data-table tr:hover { background: #f8fafc; }
+  .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .btn-primary { background: #0f3460; color: white; }
+  .btn-primary:hover { background: #1a4a8a; }
+  .btn-danger { background: #ef4444; color: white; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-success { background: #22c55e; color: white; }
+  .btn-success:hover { background: #16a34a; }
+  .form-input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;
+                font-size: 13px; }
+  .form-input:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,0.1); }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);
+                   display: none; z-index: 1000; justify-content: center; align-items: flex-start; padding-top: 40px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 900px;
+           max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: #dbeafe; color: #1e40af; }
+  .badge-green { background: #dcfce7; color: #166534; }
+  .badge-amber { background: #fef3c7; color: #92400e; }
+  .section-title { font-size: 16px; font-weight: 700; color: #0f3460; margin-bottom: 12px;
+                   padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  .stat-card { background: linear-gradient(135deg, #0f3460, #1a4a8a); color: white; border-radius: 10px;
+               padding: 16px 20px; }
+  .stat-card h3 { font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
+  .stat-card p { font-size: 24px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div style="padding: 16px 24px;">
+
+  <!-- Top Stats Row -->
+  <div id="statsRow" class="grid grid-cols-5 gap-4 mb-4">
+    <div class="stat-card"><h3>Total Clients</h3><p id="statClients">0</p></div>
+    <div class="stat-card"><h3>Total Orders</h3><p id="statOrders">0</p></div>
+    <div class="stat-card"><h3>Total Contract Value</h3><p id="statValue">$0</p></div>
+    <div class="stat-card"><h3>Pending Milestones</h3><p id="statMilestones">0</p></div>
+    <div class="stat-card"><h3>Open Invoices</h3><p id="statInvoices">0</p></div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div style="display: flex; gap: 4px; margin-bottom: 0;">
+    <button class="tab-btn active" onclick="showTab('admin')">Admin Setup</button>
+    <button class="tab-btn" onclick="showTab('orders')">Orders</button>
+    <button class="tab-btn" onclick="showTab('invoices')">Invoices & Receipts</button>
+    <button class="tab-btn" onclick="showTab('reports')">Reports</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  ADMIN PANEL                           -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="panel-admin" class="panel active">
+    <div class="grid grid-cols-3 gap-6">
+
+      <!-- Clients -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Clients</h3>
+          <button class="btn btn-primary btn-sm" onclick="openClientModal()">+ Add Client</button>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" id="clientsTable"><thead><tr>
+            <th>ID</th><th>Name</th><th>Email</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Contract Types -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Contract Types</h3>
+          <button class="btn btn-primary btn-sm" onclick="openContractTypeModal()">+ Add Type</button>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" id="contractTypesTable"><thead><tr>
+            <th>Category</th><th>Subcategory</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Companies -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Companies</h3>
+          <button class="btn btn-primary btn-sm" onclick="openCompanyModal()">+ Add</button>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" id="companiesTable"><thead><tr>
+            <th>Name</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  ORDERS PANEL                          -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="panel-orders" class="panel">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="section-title" style="margin:0;border:none;padding:0;">Orders / Contracts</h3>
+      <button class="btn btn-primary" onclick="openOrderModal()">+ New Order</button>
+    </div>
+    <table class="data-table" id="ordersTable"><thead><tr>
+      <th>Order Name</th><th>Client</th><th>Type</th><th>Company</th><th>Date</th>
+      <th>Contract Amt</th><th>PO#</th><th></th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  INVOICES & RECEIPTS PANEL             -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="panel-invoices" class="panel">
+    <h3 class="section-title">Invoices</h3>
+    <table class="data-table" id="invoicesTable"><thead><tr>
+      <th>Invoice #</th><th>Order</th><th>Milestone</th><th>Date</th>
+      <th>Amount</th><th>Received</th><th>Balance</th><th></th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  REPORTS PANEL                         -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="panel-reports" class="panel">
+    <div class="grid grid-cols-2 gap-6">
+      <!-- Backlog Report -->
+      <div>
+        <h3 class="section-title">Total Backlog Report</h3>
+        <div class="flex gap-3 items-end mb-4">
+          <div>
+            <label class="form-label">Start Month</label>
+            <input type="month" id="backlogMonth" class="form-input" style="width:200px;">
+          </div>
+          <button class="btn btn-primary" onclick="runBacklogReport()">Generate</button>
+        </div>
+        <div id="backlogResults"></div>
+      </div>
+      <!-- Milestone Schedule -->
+      <div>
+        <h3 class="section-title">Milestone Schedule</h3>
+        <div class="flex gap-3 items-end mb-4">
+          <div>
+            <label class="form-label">From</label>
+            <input type="date" id="schedStart" class="form-input" style="width:160px;">
+          </div>
+          <div>
+            <label class="form-label">To</label>
+            <input type="date" id="schedEnd" class="form-input" style="width:160px;">
+          </div>
+          <button class="btn btn-primary" onclick="runScheduleReport()">Generate</button>
+        </div>
+        <div id="scheduleResults"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  MODALS                                        -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<!-- Client Modal -->
+<div class="modal-overlay" id="clientModal">
+<div class="modal" style="max-width:500px;">
+  <h3 class="section-title" id="clientModalTitle">Add Client</h3>
+  <input type="hidden" id="clientEditId">
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <div><label class="form-label">Client ID (8 chars)</label>
+      <input class="form-input" id="fClientId" maxlength="8"></div>
+    <div><label class="form-label">Client Name</label>
+      <input class="form-input" id="fClientName"></div>
+    <div class="col-span-2"><label class="form-label">Billing Address</label>
+      <input class="form-input" id="fClientAddr"></div>
+    <div><label class="form-label">Contact Names</label>
+      <input class="form-input" id="fClientContact"></div>
+    <div><label class="form-label">Billing Name</label>
+      <input class="form-input" id="fClientBillName"></div>
+    <div class="col-span-2"><label class="form-label">Billing Email</label>
+      <input class="form-input" id="fClientEmail" type="email"></div>
+  </div>
+  <div class="flex justify-end gap-2">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('clientModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveClient()">Save</button>
+  </div>
+</div>
+</div>
+
+<!-- Contract Type Modal -->
+<div class="modal-overlay" id="contractTypeModal">
+<div class="modal" style="max-width:400px;">
+  <h3 class="section-title">Add Contract Type</h3>
+  <input type="hidden" id="ctEditId">
+  <div class="grid gap-3 mb-4">
+    <div><label class="form-label">Category</label>
+      <select class="form-input" id="fCtCategory">
+        <option value="SaaS">SaaS</option>
+        <option value="Development Service">Development Service</option>
+        <option value="Support Services">Support Services</option>
+      </select></div>
+    <div><label class="form-label">Subcategory</label>
+      <input class="form-input" id="fCtSubcategory"></div>
+  </div>
+  <div class="flex justify-end gap-2">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('contractTypeModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveContractType()">Save</button>
+  </div>
+</div>
+</div>
+
+<!-- Company Modal -->
+<div class="modal-overlay" id="companyModal">
+<div class="modal" style="max-width:350px;">
+  <h3 class="section-title">Add Company</h3>
+  <input type="hidden" id="compEditId">
+  <div class="mb-4">
+    <label class="form-label">Company Name</label>
+    <input class="form-input" id="fCompName">
+  </div>
+  <div class="flex justify-end gap-2">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('companyModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveCompany()">Save</button>
+  </div>
+</div>
+</div>
+
+<!-- Order Modal (Create / Edit) -->
+<div class="modal-overlay" id="orderModal">
+<div class="modal">
+  <h3 class="section-title" id="orderModalTitle">New Order</h3>
+  <input type="hidden" id="orderEditId">
+
+  <!-- Basic Info -->
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <div><label class="form-label">Client</label>
+      <select class="form-input" id="fOrderClient"></select></div>
+    <div><label class="form-label">Order/Contract Name (12 chars)</label>
+      <input class="form-input" id="fOrderName" maxlength="12"></div>
+    <div><label class="form-label">Contract Type</label>
+      <select class="form-input" id="fOrderType"></select></div>
+    <div><label class="form-label">Company</label>
+      <select class="form-input" id="fOrderCompany"></select></div>
+    <div><label class="form-label">Date of Order</label>
+      <input class="form-input" type="date" id="fOrderDate"></div>
+    <div><label class="form-label">PO Number</label>
+      <input class="form-input" id="fOrderPO"></div>
+    <div><label class="form-label">Contract Amount ($)</label>
+      <input class="form-input" type="number" step="0.01" id="fOrderAmount"></div>
+  </div>
+
+  <div class="flex justify-end gap-2 mb-4">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('orderModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+  </div>
+
+  <!-- Milestones (only shown when editing existing order) -->
+  <div id="milestonesSection" style="display:none;">
+    <div class="flex justify-between items-center mb-3">
+      <h4 class="section-title" style="margin:0;border:none;padding:0;">
+        Milestones <span id="milestoneCount" class="badge badge-blue">0/15</span>
+        <span id="milestoneDiff" class="badge badge-amber" style="margin-left:8px;"></span>
+      </h4>
+      <button class="btn btn-primary btn-sm" onclick="openMilestoneForm()">+ Add Milestone</button>
+    </div>
+    <table class="data-table" id="milestonesTable"><thead><tr>
+      <th>Name</th><th>Scheduled</th><th>Amount</th><th>Type</th><th>Rescheduled</th><th>Description</th><th>Billed</th><th></th>
+    </tr></thead><tbody></tbody></table>
+
+    <!-- Inline milestone form -->
+    <div id="milestoneForm" style="display:none; margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px;">
+      <input type="hidden" id="msEditId">
+      <div class="grid grid-cols-4 gap-3 mb-3">
+        <div><label class="form-label">Name (12 chars)</label>
+          <input class="form-input" id="fMsName" maxlength="12"></div>
+        <div><label class="form-label">Scheduled Date</label>
+          <input class="form-input" type="date" id="fMsDate"></div>
+        <div><label class="form-label">Amount ($)</label>
+          <input class="form-input" type="number" step="0.01" id="fMsAmount"></div>
+        <div><label class="form-label">Type</label>
+          <select class="form-input" id="fMsType">
+            <option value="Estimate">Estimate</option>
+            <option value="Confirmed">Confirmed</option>
+          </select></div>
+        <div class="col-span-2"><label class="form-label">Description (50 chars)</label>
+          <input class="form-input" id="fMsDesc" maxlength="50"></div>
+        <div><label class="form-label">Rescheduled Date</label>
+          <input class="form-input" type="date" id="fMsResched"></div>
+        <div><label class="form-label">Reason for Rescheduling</label>
+          <input class="form-input" id="fMsReason"></div>
+      </div>
+      <div id="msChangeReasonRow" style="display:none;" class="mb-3">
+        <label class="form-label">Reason for Change (required for edits)</label>
+        <input class="form-input" id="fMsChangeReason">
+      </div>
+      <div class="flex justify-end gap-2">
+        <button class="btn" style="background:#e2e8f0;" onclick="closeMilestoneForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveMilestone()">Save Milestone</button>
+      </div>
+    </div>
+
+    <!-- Notes Section -->
+    <div class="mt-6">
+      <div class="flex justify-between items-center mb-3">
+        <h4 class="section-title" style="margin:0;border:none;padding:0;">
+          Performance Notes <span id="noteCount" class="badge badge-blue">0/50</span>
+        </h4>
+      </div>
+      <div class="flex gap-2 mb-3">
+        <input class="form-input" id="fNoteText" maxlength="50" placeholder="Add a note (50 chars max)..." style="flex:1;">
+        <button class="btn btn-primary" onclick="addNote()">Add Note</button>
+      </div>
+      <div id="notesList" style="max-height:200px; overflow-y:auto;"></div>
+    </div>
+
+    <!-- PDF Uploads -->
+    <div class="mt-6 grid grid-cols-2 gap-4">
+      <div>
+        <label class="form-label">Contract PDF</label>
+        <div class="flex gap-2 items-center">
+          <input type="file" id="contractPdfInput" accept=".pdf" class="form-input" style="padding:4px;">
+          <button class="btn btn-primary btn-sm" onclick="uploadPdf('contracts')">Upload</button>
+          <span id="contractPdfLink"></span>
+        </div>
+      </div>
+      <div>
+        <label class="form-label">Purchase Order PDF</label>
+        <div class="flex gap-2 items-center">
+          <input type="file" id="poPdfInput" accept=".pdf" class="form-input" style="padding:4px;">
+          <button class="btn btn-primary btn-sm" onclick="uploadPdf('po')">Upload</button>
+          <span id="poPdfLink"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Invoice Modal -->
+<div class="modal-overlay" id="invoiceModal">
+<div class="modal" style="max-width:500px;">
+  <h3 class="section-title">Create Invoice</h3>
+  <div class="grid grid-cols-2 gap-3 mb-4">
+    <div><label class="form-label">Order</label>
+      <select class="form-input" id="fInvOrder" onchange="loadMilestonesForInvoice()"></select></div>
+    <div><label class="form-label">Milestone</label>
+      <select class="form-input" id="fInvMilestone" onchange="prefillInvoiceAmount()"></select></div>
+    <div><label class="form-label">Invoice Number</label>
+      <input class="form-input" id="fInvNumber"></div>
+    <div><label class="form-label">Invoice Date</label>
+      <input class="form-input" type="date" id="fInvDate"></div>
+    <div><label class="form-label">Invoice Amount ($)</label>
+      <input class="form-input" type="number" step="0.01" id="fInvAmount"></div>
+  </div>
+  <div class="flex justify-end gap-2">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('invoiceModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveInvoice()">Create Invoice</button>
+  </div>
+</div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal-overlay" id="receiptModal">
+<div class="modal" style="max-width:450px;">
+  <h3 class="section-title">Record Payment Receipt</h3>
+  <input type="hidden" id="fRcptInvoiceId">
+  <p id="rcptInvoiceInfo" class="mb-3 text-sm text-gray-600"></p>
+  <div class="grid gap-3 mb-4">
+    <div><label class="form-label">Receipt Date</label>
+      <input class="form-input" type="date" id="fRcptDate"></div>
+    <div><label class="form-label">Receipt Amount ($)</label>
+      <input class="form-input" type="number" step="0.01" id="fRcptAmount"></div>
+    <div><label class="form-label">Notes</label>
+      <input class="form-input" id="fRcptNotes"></div>
+  </div>
+  <div class="flex justify-end gap-2">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('receiptModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveReceipt()">Save Receipt</button>
+  </div>
+</div>
+</div>
+
+
+<script>
+const API = window.location.origin;
+let allClients = [], allTypes = [], allCompanies = [], allOrders = [], currentOrder = null;
+
+// ── Helpers ──────────────────────────────
+function fmt(n) { return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n||0); }
+
+async function apiFetch(path, opts={}) {
+  const res = await fetch(API + path, { credentials: 'include', ...opts });
+  if (res.status === 401) { window.top.location.href = '/login'; return null; }
+  return res.json();
+}
+
+async function apiPost(path, body) {
+  return apiFetch(path, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+}
+
+async function apiPut(path, body) {
+  return apiFetch(path, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+}
+
+async function apiDelete(path) {
+  return apiFetch(path, { method:'DELETE' });
+}
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'orders') loadOrders();
+  if (name === 'invoices') loadInvoices();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ── Init ─────────────────────────────────
+async function init() {
+  await Promise.all([loadClients(), loadContractTypes(), loadCompanies()]);
+  loadOrders();
+}
+
+// ── Clients ──────────────────────────────
+async function loadClients() {
+  allClients = await apiFetch('/api/clients') || [];
+  const tbody = document.querySelector('#clientsTable tbody');
+  tbody.innerHTML = allClients.map(c => `<tr>
+    <td>${c.client_id}</td><td>${c.name}</td><td>${c.billing_email}</td>
+    <td>
+      <button class="btn btn-sm" style="background:#e2e8f0;" onclick="editClient(${c.id})">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteClient(${c.id})">Del</button>
+    </td>
+  </tr>`).join('');
+  document.getElementById('statClients').textContent = allClients.length;
+}
+
+function openClientModal(data) {
+  document.getElementById('clientEditId').value = data ? data.id : '';
+  document.getElementById('fClientId').value = data ? data.client_id : '';
+  document.getElementById('fClientName').value = data ? data.name : '';
+  document.getElementById('fClientAddr').value = data ? data.billing_address : '';
+  document.getElementById('fClientContact').value = data ? data.contact_names : '';
+  document.getElementById('fClientBillName').value = data ? data.billing_name : '';
+  document.getElementById('fClientEmail').value = data ? data.billing_email : '';
+  document.getElementById('clientModalTitle').textContent = data ? 'Edit Client' : 'Add Client';
+  openModal('clientModal');
+}
+
+function editClient(id) { openClientModal(allClients.find(c => c.id === id)); }
+
+async function saveClient() {
+  const editId = document.getElementById('clientEditId').value;
+  const body = {
+    client_id: document.getElementById('fClientId').value,
+    name: document.getElementById('fClientName').value,
+    billing_address: document.getElementById('fClientAddr').value,
+    contact_names: document.getElementById('fClientContact').value,
+    billing_name: document.getElementById('fClientBillName').value,
+    billing_email: document.getElementById('fClientEmail').value,
+  };
+  if (!body.client_id || !body.name) return alert('Client ID and Name are required');
+  const result = editId ? await apiPut('/api/clients/' + editId, body)
+                        : await apiPost('/api/clients', body);
+  if (result && result.error) return alert('Error saving client: ' + result.error);
+  closeModal('clientModal');
+  loadClients();
+}
+
+async function deleteClient(id) {
+  if (!confirm('Delete this client?')) return;
+  await apiDelete('/api/clients/' + id);
+  loadClients();
+}
+
+// ── Contract Types ───────────────────────
+async function loadContractTypes() {
+  allTypes = await apiFetch('/api/contract-types') || [];
+  const tbody = document.querySelector('#contractTypesTable tbody');
+  tbody.innerHTML = allTypes.map(t => `<tr>
+    <td>${t.category}</td><td>${t.subcategory}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteContractType(${t.id})">Del</button></td>
+  </tr>`).join('');
+}
+
+function openContractTypeModal() {
+  document.getElementById('ctEditId').value = '';
+  document.getElementById('fCtSubcategory').value = '';
+  openModal('contractTypeModal');
+}
+
+async function saveContractType() {
+  const body = {
+    category: document.getElementById('fCtCategory').value,
+    subcategory: document.getElementById('fCtSubcategory').value,
+  };
+  if (!body.subcategory) return alert('Subcategory is required');
+  await apiPost('/api/contract-types', body);
+  closeModal('contractTypeModal');
+  loadContractTypes();
+}
+
+async function deleteContractType(id) {
+  if (!confirm('Delete this contract type?')) return;
+  await apiDelete('/api/contract-types/' + id);
+  loadContractTypes();
+}
+
+// ── Companies ────────────────────────────
+async function loadCompanies() {
+  allCompanies = await apiFetch('/api/companies') || [];
+  const tbody = document.querySelector('#companiesTable tbody');
+  tbody.innerHTML = allCompanies.map(c => `<tr>
+    <td>${c.name}</td>
+    <td>
+      <button class="btn btn-danger btn-sm" onclick="deleteCompany(${c.id})">Del</button>
+    </td>
+  </tr>`).join('');
+}
+
+function openCompanyModal() {
+  document.getElementById('compEditId').value = '';
+  document.getElementById('fCompName').value = '';
+  openModal('companyModal');
+}
+
+async function saveCompany() {
+  const name = document.getElementById('fCompName').value;
+  if (!name) return alert('Company name is required');
+  await apiPost('/api/companies', { name });
+  closeModal('companyModal');
+  loadCompanies();
+}
+
+async function deleteCompany(id) {
+  if (!confirm('Delete this company?')) return;
+  await apiDelete('/api/companies/' + id);
+  loadCompanies();
+}
+
+// ── Orders ───────────────────────────────
+async function loadOrders() {
+  allOrders = await apiFetch('/api/orders') || [];
+  const tbody = document.querySelector('#ordersTable tbody');
+  tbody.innerHTML = allOrders.map(o => `<tr style="cursor:pointer;" onclick="openOrderDetail(${o.id})">
+    <td><strong>${o.order_name}</strong></td>
+    <td>${o.client_name}</td>
+    <td><span class="badge badge-blue">${o.contract_type}</span></td>
+    <td>${o.company_name}</td>
+    <td>${o.date_of_order}</td>
+    <td>${fmt(o.contract_amount)}</td>
+    <td>${o.po_number}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteOrder(${o.id})">Del</button></td>
+  </tr>`).join('');
+
+  // Update stats
+  document.getElementById('statOrders').textContent = allOrders.length;
+  document.getElementById('statValue').textContent = fmt(allOrders.reduce((s,o) => s + o.contract_amount, 0));
+}
+
+function populateOrderDropdowns() {
+  const clientSel = document.getElementById('fOrderClient');
+  clientSel.innerHTML = '<option value="">-- Select Client --</option>' +
+    allClients.map(c => `<option value="${c.id}">${c.client_id} - ${c.name}</option>`).join('');
+
+  const typeSel = document.getElementById('fOrderType');
+  typeSel.innerHTML = '<option value="">-- Select Type --</option>' +
+    allTypes.map(t => `<option value="${t.id}">${t.category} - ${t.subcategory}</option>`).join('');
+
+  const compSel = document.getElementById('fOrderCompany');
+  compSel.innerHTML = '<option value="">-- Select Company --</option>' +
+    allCompanies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function openOrderModal(data) {
+  populateOrderDropdowns();
+  document.getElementById('orderEditId').value = data ? data.id : '';
+  document.getElementById('fOrderClient').value = data ? data.client_id : '';
+  document.getElementById('fOrderName').value = data ? data.order_name : '';
+  document.getElementById('fOrderType').value = data ? data.contract_type_id : '';
+  document.getElementById('fOrderCompany').value = data ? data.company_id : '';
+  document.getElementById('fOrderDate').value = data ? data.date_of_order : '';
+  document.getElementById('fOrderPO').value = data ? data.po_number : '';
+  document.getElementById('fOrderAmount').value = data ? data.contract_amount : '';
+  document.getElementById('orderModalTitle').textContent = data ? 'Edit Order' : 'New Order';
+  document.getElementById('milestonesSection').style.display = data ? 'block' : 'none';
+  if (data) {
+    currentOrder = data;
+    renderMilestones(data.milestones || []);
+    renderNotes(data.notes || []);
+    renderPdfLinks(data);
+  }
+  openModal('orderModal');
+}
+
+async function openOrderDetail(id) {
+  const data = await apiFetch('/api/orders/' + id);
+  if (data) openOrderModal(data);
+}
+
+async function saveOrder() {
+  const editId = document.getElementById('orderEditId').value;
+  const body = {
+    client_id: parseInt(document.getElementById('fOrderClient').value),
+    order_name: document.getElementById('fOrderName').value,
+    contract_type_id: parseInt(document.getElementById('fOrderType').value),
+    company_id: parseInt(document.getElementById('fOrderCompany').value),
+    date_of_order: document.getElementById('fOrderDate').value,
+    po_number: document.getElementById('fOrderPO').value,
+    contract_amount: parseFloat(document.getElementById('fOrderAmount').value) || 0,
+  };
+  if (!body.client_id || !body.order_name || !body.contract_type_id || !body.company_id || !body.date_of_order) {
+    return alert('Please fill in all required fields');
+  }
+  let result;
+  if (editId) {
+    result = await apiPut('/api/orders/' + editId, body);
+  } else {
+    result = await apiPost('/api/orders', body);
+    // Re-open with full detail if newly created
+    if (result && result.id) {
+      closeModal('orderModal');
+      loadOrders();
+      openOrderDetail(result.id);
+      return;
+    }
+  }
+  loadOrders();
+  // Refresh the detail view
+  if (editId) openOrderDetail(editId);
+}
+
+async function deleteOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  await apiDelete('/api/orders/' + id);
+  loadOrders();
+}
+
+// ── Milestones ───────────────────────────
+function renderMilestones(milestones) {
+  const tbody = document.querySelector('#milestonesTable tbody');
+  tbody.innerHTML = milestones.map(m => `<tr>
+    <td>${m.milestone_name}</td>
+    <td>${m.scheduled_date}</td>
+    <td>${fmt(m.payment_amount)}</td>
+    <td><span class="badge ${m.milestone_type==='Confirmed'?'badge-green':'badge-amber'}">${m.milestone_type}</span></td>
+    <td>${m.rescheduled_date || '-'}</td>
+    <td>${m.description}</td>
+    <td>${m.is_billed ? '<span class="badge badge-green">Yes</span>' : 'No'}</td>
+    <td>
+      <button class="btn btn-sm" style="background:#e2e8f0;" onclick="editMilestone(${m.id})">Edit</button>
+      ${!m.is_billed ? `<button class="btn btn-danger btn-sm" onclick="deleteMilestone(${m.id})">Del</button>` : ''}
+    </td>
+  </tr>`).join('');
+
+  document.getElementById('milestoneCount').textContent = milestones.length + '/15';
+  if (currentOrder) {
+    const msTotal = milestones.reduce((s,m) => s + m.payment_amount, 0);
+    const diff = currentOrder.contract_amount - msTotal;
+    const el = document.getElementById('milestoneDiff');
+    if (Math.abs(diff) > 0.01) {
+      el.textContent = `Difference: ${fmt(diff)}`;
+      el.style.display = '';
+    } else {
+      el.textContent = 'Balanced';
+      el.className = 'badge badge-green';
+      el.style.display = '';
+    }
+  }
+}
+
+function openMilestoneForm(data) {
+  document.getElementById('msEditId').value = data ? data.id : '';
+  document.getElementById('fMsName').value = data ? data.milestone_name : '';
+  document.getElementById('fMsDate').value = data ? data.scheduled_date : '';
+  document.getElementById('fMsAmount').value = data ? data.payment_amount : '';
+  document.getElementById('fMsType').value = data ? data.milestone_type : 'Estimate';
+  document.getElementById('fMsDesc').value = data ? data.description : '';
+  document.getElementById('fMsResched').value = data ? data.rescheduled_date : '';
+  document.getElementById('fMsReason').value = data ? data.rescheduling_reason : '';
+  document.getElementById('fMsChangeReason').value = '';
+  document.getElementById('msChangeReasonRow').style.display = data ? 'block' : 'none';
+  document.getElementById('milestoneForm').style.display = 'block';
+}
+
+function closeMilestoneForm() { document.getElementById('milestoneForm').style.display = 'none'; }
+
+async function editMilestone(id) {
+  const ms = (currentOrder.milestones || []).find(m => m.id === id);
+  openMilestoneForm(ms);
+}
+
+async function saveMilestone() {
+  const editId = document.getElementById('msEditId').value;
+  const orderId = document.getElementById('orderEditId').value;
+  const body = {
+    order_id: parseInt(orderId),
+    milestone_name: document.getElementById('fMsName').value,
+    scheduled_date: document.getElementById('fMsDate').value,
+    payment_amount: parseFloat(document.getElementById('fMsAmount').value) || 0,
+    milestone_type: document.getElementById('fMsType').value,
+    description: document.getElementById('fMsDesc').value,
+    rescheduled_date: document.getElementById('fMsResched').value || null,
+    rescheduling_reason: document.getElementById('fMsReason').value,
+  };
+  if (!body.milestone_name || !body.scheduled_date) return alert('Name and Date are required');
+  if (editId) {
+    body.change_reason = document.getElementById('fMsChangeReason').value;
+    await apiPut('/api/milestones/' + editId, body);
+  } else {
+    await apiPost('/api/milestones', body);
+  }
+  closeMilestoneForm();
+  openOrderDetail(orderId);
+}
+
+async function deleteMilestone(id) {
+  if (!confirm('Delete this milestone?')) return;
+  await apiDelete('/api/milestones/' + id);
+  openOrderDetail(document.getElementById('orderEditId').value);
+}
+
+// ── Notes ────────────────────────────────
+function renderNotes(notes) {
+  document.getElementById('noteCount').textContent = notes.length + '/50';
+  document.getElementById('notesList').innerHTML = notes.map(n =>
+    `<div style="padding:6px 10px; background:#f8fafc; border-radius:6px; margin-bottom:4px; font-size:13px;">
+      <strong>${n.login_name}</strong> <span style="color:#94a3b8; font-size:11px;">${n.note_date}</span><br>
+      ${n.note_text}
+    </div>`
+  ).join('');
+}
+
+async function addNote() {
+  const text = document.getElementById('fNoteText').value.trim();
+  if (!text) return;
+  const orderId = document.getElementById('orderEditId').value;
+  await apiPost('/api/orders/' + orderId + '/notes', { note_text: text });
+  document.getElementById('fNoteText').value = '';
+  openOrderDetail(orderId);
+}
+
+// ── PDF Uploads ──────────────────────────
+function renderPdfLinks(order) {
+  const cLink = document.getElementById('contractPdfLink');
+  const pLink = document.getElementById('poPdfLink');
+  cLink.innerHTML = order.contract_pdf
+    ? `<a href="${API}/api/download/contracts/${order.contract_pdf}" target="_blank" style="color:#0f3460; font-size:12px;">View PDF</a>` : '';
+  pLink.innerHTML = order.po_pdf
+    ? `<a href="${API}/api/download/po/${order.po_pdf}" target="_blank" style="color:#0f3460; font-size:12px;">View PDF</a>` : '';
+}
+
+async function uploadPdf(type) {
+  const inputId = type === 'contracts' ? 'contractPdfInput' : 'poPdfInput';
+  const fileInput = document.getElementById(inputId);
+  if (!fileInput.files.length) return alert('Please select a PDF file');
+  const orderId = document.getElementById('orderEditId').value;
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  await fetch(`${API}/api/upload/${type}/${orderId}`, {
+    method: 'POST', body: formData, credentials: 'include'
+  });
+  openOrderDetail(orderId);
+}
+
+// ── Invoices ─────────────────────────────
+async function loadInvoices() {
+  const invoices = await apiFetch('/api/invoices') || [];
+  const tbody = document.querySelector('#invoicesTable tbody');
+  tbody.innerHTML = invoices.map(inv => `<tr>
+    <td>${inv.invoice_number}</td>
+    <td>${inv.order_id}</td>
+    <td>${inv.milestone_name}</td>
+    <td>${inv.invoice_date}</td>
+    <td>${fmt(inv.invoice_amount)}</td>
+    <td>${fmt(inv.total_received)}</td>
+    <td>${fmt(inv.balance)}</td>
+    <td><button class="btn btn-success btn-sm" onclick="openReceiptModal(${inv.id}, '${inv.invoice_number}', ${inv.balance})">Record Payment</button></td>
+  </tr>`).join('');
+
+  document.getElementById('statInvoices').textContent = invoices.filter(i => i.balance > 0).length;
+
+  // Also add "Create Invoice" button at top
+  const panel = document.getElementById('panel-invoices');
+  if (!panel.querySelector('#createInvBtn')) {
+    const btn = document.createElement('button');
+    btn.id = 'createInvBtn';
+    btn.className = 'btn btn-primary';
+    btn.textContent = '+ Create Invoice';
+    btn.style.cssText = 'float:right; margin-top:-40px;';
+    btn.onclick = () => openInvoiceModal();
+    panel.querySelector('.section-title').after(btn);
+  }
+}
+
+async function openInvoiceModal() {
+  // Populate order dropdown
+  const orders = await apiFetch('/api/orders') || [];
+  document.getElementById('fInvOrder').innerHTML = '<option value="">-- Select Order --</option>' +
+    orders.map(o => `<option value="${o.id}">${o.order_name} - ${o.client_name}</option>`).join('');
+  document.getElementById('fInvMilestone').innerHTML = '<option value="">-- Select Milestone --</option>';
+  document.getElementById('fInvNumber').value = '';
+  document.getElementById('fInvDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fInvAmount').value = '';
+  openModal('invoiceModal');
+}
+
+async function loadMilestonesForInvoice() {
+  const orderId = document.getElementById('fInvOrder').value;
+  if (!orderId) return;
+  const order = await apiFetch('/api/orders/' + orderId);
+  const unbilled = (order.milestones || []).filter(m => !m.is_billed);
+  document.getElementById('fInvMilestone').innerHTML = '<option value="">-- Select Milestone --</option>' +
+    unbilled.map(m => `<option value="${m.id}" data-amount="${m.payment_amount}">${m.milestone_name} - ${fmt(m.payment_amount)}</option>`).join('');
+}
+
+function prefillInvoiceAmount() {
+  const sel = document.getElementById('fInvMilestone');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.amount) {
+    document.getElementById('fInvAmount').value = opt.dataset.amount;
+  }
+}
+
+async function saveInvoice() {
+  const body = {
+    milestone_id: parseInt(document.getElementById('fInvMilestone').value),
+    invoice_number: document.getElementById('fInvNumber').value,
+    invoice_date: document.getElementById('fInvDate').value,
+    invoice_amount: parseFloat(document.getElementById('fInvAmount').value) || 0,
+  };
+  if (!body.milestone_id || !body.invoice_number || !body.invoice_date) return alert('Please fill all fields');
+  await apiPost('/api/invoices', body);
+  closeModal('invoiceModal');
+  loadInvoices();
+}
+
+// ── Receipts ─────────────────────────────
+function openReceiptModal(invoiceId, invoiceNum, balance) {
+  document.getElementById('fRcptInvoiceId').value = invoiceId;
+  document.getElementById('rcptInvoiceInfo').textContent = `Invoice: ${invoiceNum} | Balance: ${fmt(balance)}`;
+  document.getElementById('fRcptDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('fRcptAmount').value = balance > 0 ? balance : '';
+  document.getElementById('fRcptNotes').value = '';
+  openModal('receiptModal');
+}
+
+async function saveReceipt() {
+  const body = {
+    invoice_id: parseInt(document.getElementById('fRcptInvoiceId').value),
+    receipt_date: document.getElementById('fRcptDate').value,
+    receipt_amount: parseFloat(document.getElementById('fRcptAmount').value) || 0,
+    receipt_notes: document.getElementById('fRcptNotes').value,
+  };
+  if (!body.receipt_date || !body.receipt_amount) return alert('Date and Amount required');
+  await apiPost('/api/receipts', body);
+  closeModal('receiptModal');
+  loadInvoices();
+}
+
+// ── Reports ──────────────────────────────
+async function runBacklogReport() {
+  const month = document.getElementById('backlogMonth').value;
+  if (!month) return alert('Select a start month');
+  const data = await apiFetch('/api/reports/backlog?start_month=' + month);
+  if (!data) return;
+  let html = `<p class="mb-2 text-sm font-semibold">Total Backlog: ${fmt(data.total_backlog)}</p>`;
+  if (data.rows.length) {
+    html += `<table class="data-table"><thead><tr>
+      <th>Order</th><th>Client</th><th>Milestone</th><th>Date</th><th>Amount</th><th>Type</th>
+    </tr></thead><tbody>` +
+    data.rows.map(r => `<tr>
+      <td>${r.order_name}</td><td>${r.client_name}</td><td>${r.milestone_name}</td>
+      <td>${r.scheduled_date}</td><td>${fmt(r.payment_amount)}</td><td>${r.milestone_type}</td>
+    </tr>`).join('') + '</tbody></table>';
+  } else {
+    html += '<p class="text-gray-500">No unbilled milestones in this period.</p>';
+  }
+  document.getElementById('backlogResults').innerHTML = html;
+}
+
+async function runScheduleReport() {
+  const s = document.getElementById('schedStart').value;
+  const e = document.getElementById('schedEnd').value;
+  if (!s || !e) return alert('Select both dates');
+  const data = await apiFetch(`/api/reports/milestone-schedule?start_date=${s}&end_date=${e}`);
+  if (!data) return;
+  let html = `<p class="mb-2 text-sm font-semibold">Total: ${fmt(data.total)}</p>`;
+  if (data.rows.length) {
+    html += `<table class="data-table"><thead><tr>
+      <th>Order</th><th>Client</th><th>Milestone</th><th>Date</th><th>Amount</th><th>Billed</th>
+    </tr></thead><tbody>` +
+    data.rows.map(r => `<tr>
+      <td>${r.order_name}</td><td>${r.client_name}</td><td>${r.milestone_name}</td>
+      <td>${r.scheduled_date}</td><td>${fmt(r.payment_amount)}</td>
+      <td>${r.is_billed ? '<span class="badge badge-green">Yes</span>' : 'No'}</td>
+    </tr>`).join('') + '</tbody></table>';
+  } else {
+    html += '<p class="text-gray-500">No milestones in this period.</p>';
+  }
+  document.getElementById('scheduleResults').innerHTML = html;
+}
+
+// ── Start ────────────────────────────────
+init();
+</script>
+</body>
+</html>

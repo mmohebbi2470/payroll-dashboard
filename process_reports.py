@@ -334,7 +334,7 @@ def parse_sap_excel(filepath):
             and not str(name or "").strip()
         ):
             if not last_blank:
-                raw.append(("", "", "", "blank"))
+                raw.append(("", "", "", "", "blank"))
                 last_blank = True
             continue
 
@@ -348,23 +348,23 @@ def parse_sap_excel(filepath):
         if level in ("section", "subheader"):
             bal, ytd = None, None
 
-        raw.append((clean_display_name_pl(name, level), fmt_display(bal), fmt_display(ytd), level))
+        raw.append((clean_display_name_pl(name, level), fmt_display(bal), fmt_display(ytd), "", level))
         last_blank = False
 
-    while raw and raw[-1][3] == "blank":
+    while raw and raw[-1][4] == "blank":
         raw.pop()
 
     pass1 = []
     for r in raw:
-        if r[3] == "blank" and pass1 and pass1[-1][3] == "blank":
+        if r[4] == "blank" and pass1 and pass1[-1][4] == "blank":
             continue
         pass1.append(r)
 
     clean = []
     for i, r in enumerate(pass1):
-        if r[3] == "blank":
-            prev = pass1[i - 1][3] if i > 0 else None
-            nxt  = next((pass1[j][3] for j in range(i + 1, len(pass1)) if pass1[j][3] != "blank"), None)
+        if r[4] == "blank":
+            prev = pass1[i - 1][4] if i > 0 else None
+            nxt  = next((pass1[j][4] for j in range(i + 1, len(pass1)) if pass1[j][4] != "blank"), None)
             if prev in ("section", "subheader"):
                 continue
             if nxt in ("subtotal", "major"):
@@ -438,13 +438,14 @@ def parse_bs_excel(filepath):
         name = r[0]
         current_period = r[1]
         comparison_period = r[2]
+        difference_amount = r[3]  # Column D: Difference Amount
 
         if is_separator_row(row) or (
             name is None and to_num(current_period) is None and to_num(comparison_period) is None
             and not str(name or "").strip()
         ):
             if not last_blank:
-                raw.append(("", "", "", "blank"))
+                raw.append(("", "", "", "", "blank"))
                 last_blank = True
             continue
 
@@ -456,26 +457,27 @@ def parse_bs_excel(filepath):
             continue
 
         if level in ("section", "subheader"):
-            current_period, comparison_period = None, None
+            current_period, comparison_period, difference_amount = None, None, None
 
         raw.append((clean_display_name_bs(name, level),
-                     fmt_display(current_period), fmt_display(comparison_period), level))
+                     fmt_display(current_period), fmt_display(comparison_period),
+                     fmt_display(difference_amount), level))
         last_blank = False
 
-    while raw and raw[-1][3] == "blank":
+    while raw and raw[-1][4] == "blank":
         raw.pop()
 
     pass1 = []
     for r in raw:
-        if r[3] == "blank" and pass1 and pass1[-1][3] == "blank":
+        if r[4] == "blank" and pass1 and pass1[-1][4] == "blank":
             continue
         pass1.append(r)
 
     clean = []
     for i, r in enumerate(pass1):
-        if r[3] == "blank":
-            prev = pass1[i - 1][3] if i > 0 else None
-            nxt  = next((pass1[j][3] for j in range(i + 1, len(pass1)) if pass1[j][3] != "blank"), None)
+        if r[4] == "blank":
+            prev = pass1[i - 1][4] if i > 0 else None
+            nxt  = next((pass1[j][4] for j in range(i + 1, len(pass1)) if pass1[j][4] != "blank"), None)
             if prev in ("section", "subheader"):
                 continue
             if nxt in ("subtotal", "major"):
@@ -543,8 +545,8 @@ def build_pdf(rows, company, period, update_date, output_path, report_type="P&L"
     ]
 
     if report_type == "BS":
-        CW = [4.0*inch, 1.5*inch, 1.5*inch]
-        tdata = [["Account", "Current Period", "Comparison Period"]]
+        CW = [3.5*inch, 1.1*inch, 1.1*inch, 1.3*inch]
+        tdata = [["Account", "Current Period", "Comparison Period", "Difference"]]
     else:
         CW = [4.0*inch, 1.5*inch, 1.5*inch]
         tdata = [["Account", "Month", "Year to Date"]]
@@ -559,13 +561,19 @@ def build_pdf(rows, company, period, update_date, output_path, report_type="P&L"
         ("BOTTOMPADDING", (0, 0),  (-1, -1), 1),
     ]
 
-    for i, (name, col1, col2, level) in enumerate(rows):
+    for i, (name, col1, col2, col3, level) in enumerate(rows):
         ri = i + 1
         if level == "blank":
-            tdata.append(["", "", ""])
+            if report_type == "BS":
+                tdata.append(["", "", "", ""])
+            else:
+                tdata.append(["", "", ""])
             continue
         indent = "        " if level == "account" else ""
-        tdata.append([indent + name, col1, col2])
+        if report_type == "BS":
+            tdata.append([indent + name, col1, col2, col3])
+        else:
+            tdata.append([indent + name, col1, col2])
         if level == "major":
             tstyle += [
                 ("FONTNAME",  (0, ri), (-1, ri), "Helvetica-Bold"),

@@ -414,10 +414,6 @@ def is_net_row(ws, r: int) -> bool:
 
 def main():
     global TARGET_PAY_DATE, OUTPUT_XLSX
-    if len(sys.argv) > 1:
-        TARGET_PAY_DATE = sys.argv[1].strip()
-        OUTPUT_XLSX = f"PayrollFilled_{TARGET_PAY_DATE.replace('/','-')}.xlsx"
-        print(f"Using target date from command line: {TARGET_PAY_DATE}")
 
     infos = load_all_tables(ALL_TABLES_XLSX)
     col_index = build_column_index(infos)
@@ -518,4 +514,8 @@ def main():
     print("Saved:", OUTPUT_XLSX)
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        TARGET_PAY_DATE = sys.argv[1].strip()
+        OUTPUT_XLSX = f"PayrollFilled_{TARGET_PAY_DATE.replace('/','-')}.xlsx"
+        print(f"Using target date from command line: {TARGET_PAY_DATE}")
     main()

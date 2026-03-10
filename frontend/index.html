@@ -188,33 +188,7 @@
             </div>
         </div>
 
-        <!-- Main Data View (Grid) -->
-        <div class="card overflow-hidden flex flex-col min-h-[500px]">
-            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                <div class="flex gap-2">
-                    <button onclick="switchView('source')" id="btn-source"
-                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm tab-active">Source
-                        Data</button>
-                    <button onclick="switchView('final')" id="btn-final"
-                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Final
-                        Payroll</button>
-                </div>
-                <div id="sheet-selector" class="flex gap-2 overflow-x-auto no-scrollbar max-w-[800px]">
-                    <!-- Tabs injected here -->
-                </div>
-            </div>
-            <div class="flex-grow overflow-auto custom-scrollbar relative" style="height: 500px;">
-                <table id="data-table" class="w-full text-sm text-left border-collapse"></table>
-                <div id="empty-state"
-                    class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-white">
-                    <i data-lucide="table" class="w-16 h-16 mb-4 opacity-20"></i>
-                    <p class="font-bold text-lg">No Data Available</p>
-                    <p class="text-sm">Upload a file or select a report from the list below</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Section: File Explorers -->
+        <!-- Middle Section: File Explorers -->
         <div class="grid grid-cols-12 gap-6">
             <!-- Output Reports -->
             <div class="col-span-12 lg:col-span-6 card h-[500px] flex flex-col">
@@ -253,6 +227,32 @@
                 </div>
                 <div id="input-list" class="flex-grow overflow-y-auto custom-scrollbar p-0">
                     <p class="text-center py-20 text-slate-400 text-sm">Loading files...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: Data View (Grid) -->
+        <div class="card overflow-hidden flex flex-col min-h-[500px]">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex gap-2">
+                    <button onclick="switchView('source')" id="btn-source"
+                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm tab-active">Source
+                        Data</button>
+                    <button onclick="switchView('final')" id="btn-final"
+                        class="px-4 py-1.5 rounded-full text-xs font-bold transition-all bg-white border border-slate-200 text-slate-600 hover:bg-slate-50">Final
+                        Payroll</button>
+                </div>
+                <div id="sheet-selector" class="flex gap-2 overflow-x-auto no-scrollbar max-w-[800px]">
+                    <!-- Tabs injected here -->
+                </div>
+            </div>
+            <div class="flex-grow overflow-auto custom-scrollbar relative" style="height: 500px;">
+                <table id="data-table" class="w-full text-sm text-left border-collapse"></table>
+                <div id="empty-state"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-white">
+                    <i data-lucide="table" class="w-16 h-16 mb-4 opacity-20"></i>
+                    <p class="font-bold text-lg">No Data Available</p>
+                    <p class="text-sm">Upload a file or select a report from the list above</p>
                 </div>
             </div>
         </div>
@@ -403,31 +403,44 @@
                 return;
             }
 
-            // Group by date found in filename, fallback to mtime
+            // Group by folder (for outputs) or date in filename (for inputs)
             const groups = {};
             files.forEach(f => {
-                let displayDate = new Date(f.mtime * 1000);
-
-                // Try parsing MM-DD-YY from filename (e.g., 01-30-26)
-                const ddMatch = f.name.match(/(\d{2})-(\d{2})-(\d{2})/);
-                if (ddMatch) {
-                    const month = parseInt(ddMatch[1]) - 1;
-                    const day = parseInt(ddMatch[2]);
-                    const year = 2000 + parseInt(ddMatch[3]);
-                    displayDate = new Date(year, month, day);
-                } else {
-                    // Try parsing Month Name (e.g., January 2026)
-                    const monthsNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-                    const monthMatch = monthsNames.find(m => f.name.includes(m));
-                    if (monthMatch) {
-                        const yearMatch = f.name.match(/20\d{2}/);
-                        const year = yearMatch ? parseInt(yearMatch[0]) : 2026;
-                        displayDate = new Date(year, monthsNames.indexOf(monthMatch), 1);
+                let monthYear;
+                // Use folder name if available (output files in month subfolders)
+                if (f.folder) {
+                    monthYear = f.folder;
+                    if (!groups[monthYear]) {
+                        // Parse "January 2026" style folder name for sorting
+                        const monthsNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                        const mIdx = monthsNames.findIndex(m => monthYear.includes(m));
+                        const yrM = monthYear.match(/\d{4}/);
+                        const sortDate = (mIdx >= 0 && yrM) ? new Date(parseInt(yrM[0]), mIdx, 1) : new Date(f.mtime * 1000);
+                        groups[monthYear] = { date: sortDate, files: [] };
                     }
+                } else {
+                    let displayDate = new Date(f.mtime * 1000);
+                    // Try parsing MM.DD.YYYY (e.g. 12.19.2026)
+                    const dotMatch = f.name.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+                    if (dotMatch) {
+                        displayDate = new Date(parseInt(dotMatch[3]), parseInt(dotMatch[1]) - 1, parseInt(dotMatch[2]));
+                    } else {
+                        // Try parsing MM-DD-YY from filename
+                        const ddMatch = f.name.match(/(\d{2})-(\d{2})-(\d{2})/);
+                        if (ddMatch) {
+                            displayDate = new Date(2000 + parseInt(ddMatch[3]), parseInt(ddMatch[1]) - 1, parseInt(ddMatch[2]));
+                        } else {
+                            const monthsNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                            const monthMatch = monthsNames.find(m => f.name.includes(m));
+                            if (monthMatch) {
+                                const yearMatch = f.name.match(/20\d{2}/);
+                                displayDate = new Date(yearMatch ? parseInt(yearMatch[0]) : 2026, monthsNames.indexOf(monthMatch), 1);
+                            }
+                        }
+                    }
+                    monthYear = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+                    if (!groups[monthYear]) groups[monthYear] = { date: displayDate, files: [] };
                 }
-
-                const monthYear = displayDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-                if (!groups[monthYear]) groups[monthYear] = { date: displayDate, files: [] };
                 groups[monthYear].files.push(f);
             });
 
@@ -509,6 +522,13 @@
                 if (data.status === 'success') {
                     if (data.source === 'source') {
                         sourceSheets = data.sheets;
+                        if (data.available_dates) {
+                            availableDates = data.available_dates;
+                            updateDateSelect(availableDates);
+                        }
+                        if (data.summary) {
+                            updateSummary(data.summary);
+                        }
                         switchView('source', true);
                     } else {
                         finalSheets = data.sheets;
@@ -534,7 +554,7 @@
             formData.append('file', file);
 
             try {
-                const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+                const res = await fetch(`${API_BASE}/upload-payroll`, { method: 'POST', body: formData });
                 const data = await res.json();
 
                 if (data.status === 'success') {
@@ -544,6 +564,9 @@
                     populateSheets(sourceSheets);
                     updateSummary(data.summary);
                     fetchFiles();
+                    showToast(`${file.name} uploaded successfully.`);
+                } else {
+                    showToast(data.detail || data.error || "Upload failed.", "error");
                 }
             } catch (err) {
                 console.error(err);

@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+.~lock.*
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Process logs
+process_log.txt
+.processed_files.json
+
+# Temporary/generated files
+PayrollFilled_*.xlsx

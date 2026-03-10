@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders Backlog & Billing</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; }
+  .tab-btn { padding: 10px 24px; cursor: pointer; border: none; background: transparent;
+             font-size: 14px; font-weight: 600; color: #666; border-bottom: 3px solid transparent; }
+  .tab-btn.active { color: #0f3460; border-bottom-color: #0f3460; }
+  .tab-btn:hover { color: #0f3460; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .card { background: white; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          margin-bottom: 16px; overflow: hidden; }
+  .card-header { background: #f8f9fa; padding: 12px 20px; border-bottom: 1px solid #e9ecef;
+                 display: flex; align-items: center; justify-content: space-between; }
+  .card-header h3 { font-size: 15px; color: #333; }
+  .card-body { padding: 16px 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f0f2f5; padding: 8px 12px; text-align: left; font-weight: 600;
+       color: #555; border-bottom: 2px solid #ddd; }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+  tr:hover { background: #f8f9fa; }
+  .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer;
+         font-size: 13px; font-weight: 600; }
+  .btn-primary { background: #0f3460; color: white; }
+  .btn-primary:hover { background: #1a4a8a; }
+  .btn-danger { background: #dc3545; color: white; }
+  .btn-danger:hover { background: #c82333; }
+  .btn-success { background: #28a745; color: white; }
+  .btn-success:hover { background: #218838; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  input, select, textarea { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+                            font-size: 13px; width: 100%; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #0f3460; }
+  label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 4px;
+          text-transform: uppercase; letter-spacing: 0.3px; }
+  .form-group { margin-bottom: 12px; }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                   background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 12px; max-width: 900px; width: 95%;
+           max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .modal-header { padding: 16px 24px; border-bottom: 1px solid #eee;
+                  display: flex; align-items: center; justify-content: space-between; }
+  .modal-header h2 { font-size: 18px; color: #333; }
+  .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 12px 24px; border-top: 1px solid #eee; display: flex;
+                  justify-content: flex-end; gap: 10px; }
+  .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: white; border-radius: 10px; padding: 16px 20px;
+               box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .stat-card .label { font-size: 12px; color: #888; text-transform: uppercase; }
+  .stat-card .value { font-size: 24px; font-weight: 700; color: #0f3460; margin-top: 4px; }
+  .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: #d4edda; color: #155724; }
+  .badge-yellow { background: #fff3cd; color: #856404; }
+  .badge-red { background: #f8d7da; color: #721c24; }
+  .badge-blue { background: #d1ecf1; color: #0c5460; }
+  .search-box { max-width: 300px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .amount-diff-pos { color: #28a745; font-weight: 600; }
+  .amount-diff-neg { color: #dc3545; font-weight: 600; }
+  .amount-diff-zero { color: #888; }
+  .note-item { padding: 8px 12px; border-left: 3px solid #0f3460; margin-bottom: 8px;
+               background: #f8f9fa; border-radius: 0 6px 6px 0; }
+  .note-item .meta { font-size: 11px; color: #888; }
+</style>
+</head>
+<body>
+
+<!-- Tab Navigation -->
+<div style="background: white; border-bottom: 1px solid #ddd; padding: 0 24px; display: flex; gap: 4px;">
+  <button class="tab-btn active" onclick="switchTab('admin')">Admin Setup</button>
+  <button class="tab-btn" onclick="switchTab('orders')">Orders</button>
+  <button class="tab-btn" onclick="switchTab('invoices')">Invoices & Receipts</button>
+  <button class="tab-btn" onclick="switchTab('reports')">Reports</button>
+</div>
+
+<div style="padding: 20px 24px; max-width: 1400px; margin: 0 auto;">
+
+<!-- ═══════ ADMIN TAB ═══════ -->
+<div id="tab-admin" class="tab-content active">
+  <!-- Clients -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Clients</h3>
+      <button class="btn btn-primary btn-sm" onclick="showClientForm()">+ Add Client</button>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Client ID</th><th>Name</th><th>Billing Name</th><th>Email</th><th>Actions</th></tr></thead>
+        <tbody id="clientsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Contract Types -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Contract Types</h3>
+      <button class="btn btn-primary btn-sm" onclick="showContractTypeForm()">+ Add Type</button>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Category</th><th>Subcategory</th><th>Actions</th></tr></thead>
+        <tbody id="contractTypesTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Companies -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Companies (Performing)</h3>
+      <button class="btn btn-primary btn-sm" onclick="showCompanyForm()">+ Add Company</button>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead><tr><th>Company Name</th><th>Actions</th></tr></thead>
+        <tbody id="companiesTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ORDERS TAB ═══════ -->
+<div id="tab-orders" class="tab-content">
+  <div class="stat-cards" id="orderStats"></div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Orders</h3>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input type="text" class="search-box" placeholder="Search orders..." id="orderSearch"
+               onkeyup="loadOrders()">
+        <button class="btn btn-primary" onclick="showOrderForm()">+ New Order</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <table>
+        <thead>
+          <tr><th>Order</th><th>Client</th><th>Type</th><th>Company</th><th>Date</th>
+              <th>Amount</th><th>PO#</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="ordersTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ INVOICES TAB ═══════ -->
+<div id="tab-invoices" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h3>Invoices & Receipts</h3>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="margin:0">Order:</label>
+        <select id="invoiceOrderSelect" onchange="loadInvoicesForOrder(this.value)" style="width:250px;">
+          <option value="">Select an order...</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-body" id="invoicesContent">
+      <p style="color:#888; text-align:center; padding:40px;">Select an order to view invoices and receipts.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ REPORTS TAB ═══════ -->
+<div id="tab-reports" class="tab-content">
+  <!-- Backlog Report -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Total Backlog Report</h3>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="margin:0">Start Month:</label>
+        <input type="month" id="backlogMonth" style="width:180px;">
+        <button class="btn btn-primary btn-sm" onclick="loadBacklogReport()">Generate</button>
+      </div>
+    </div>
+    <div class="card-body" id="backlogContent">
+      <p style="color:#888; text-align:center; padding:20px;">Select a start month and click Generate.</p>
+    </div>
+  </div>
+
+  <!-- Milestone Schedule -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Milestone Schedule Report</h3>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="margin:0">From:</label>
+        <input type="date" id="scheduleFrom" style="width:160px;">
+        <label style="margin:0">To:</label>
+        <input type="date" id="scheduleTo" style="width:160px;">
+        <button class="btn btn-primary btn-sm" onclick="loadScheduleReport()">Generate</button>
+      </div>
+    </div>
+    <div class="card-body" id="scheduleContent">
+      <p style="color:#888; text-align:center; padding:20px;">Select date range and click Generate.</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- end main container -->
+
+
+<!-- ═══════ MODALS ═══════ -->
+
+<!-- Client Modal -->
+<div class="modal-overlay" id="clientModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2 id="clientModalTitle">Add Client</h2>
+      <button class="modal-close" onclick="closeModal('clientModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="clientEditId">
+      <div class="grid-2">
+        <div class="form-group"><label>Client ID (8 char)</label>
+          <input type="text" id="clientIdField" maxlength="8" placeholder="e.g., ACME0001"></div>
+        <div class="form-group"><label>Client Name</label>
+          <input type="text" id="clientName"></div>
+      </div>
+      <div class="form-group"><label>Billing Address</label>
+        <textarea id="clientAddress" rows="2"></textarea></div>
+      <div class="grid-2">
+        <div class="form-group"><label>Contact Names</label>
+          <input type="text" id="clientContacts"></div>
+        <div class="form-group"><label>Billing Name</label>
+          <input type="text" id="clientBillingName"></div>
+      </div>
+      <div class="form-group"><label>Billing Email</label>
+        <input type="email" id="clientBillingEmail"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('clientModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveClient()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contract Type Modal -->
+<div class="modal-overlay" id="contractTypeModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>Add Contract Type</h2>
+      <button class="modal-close" onclick="closeModal('contractTypeModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Category</label>
+        <select id="ctCategory">
+          <option>SaaS</option><option>Development Service</option><option>Support Services</option>
+        </select></div>
+      <div class="form-group"><label>Subcategory</label>
+        <input type="text" id="ctSubcategory" placeholder="e.g., Telephony System"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('contractTypeModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveContractType()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Company Modal -->
+<div class="modal-overlay" id="companyModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>Add Company</h2>
+      <button class="modal-close" onclick="closeModal('companyModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Company Name</label>
+        <input type="text" id="companyName" placeholder="e.g., IT Curves"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('companyModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCompany()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="orderModalTitle">New Order</h2>
+      <button class="modal-close" onclick="closeModal('orderModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="orderEditId">
+      <div class="grid-3">
+        <div class="form-group"><label>Order Name (12 char)</label>
+          <input type="text" id="orderName" maxlength="12"></div>
+        <div class="form-group"><label>Client</label>
+          <select id="orderClient"></select></div>
+        <div class="form-group"><label>Contract Type</label>
+          <select id="orderContractType"></select></div>
+      </div>
+      <div class="grid-3">
+        <div class="form-group"><label>Company</label>
+          <select id="orderCompany"></select></div>
+        <div class="form-group"><label>Date of Order</label>
+          <input type="date" id="orderDate"></div>
+        <div class="form-group"><label>PO Number</label>
+          <input type="text" id="orderPO"></div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label>Contract Amount ($)</label>
+          <input type="number" id="orderAmount" step="0.01" min="0"></div>
+        <div></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('orderModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="orderDetailModal">
+  <div class="modal" style="max-width:1000px;">
+    <div class="modal-header">
+      <h2 id="detailTitle">Order Detail</h2>
+      <button class="modal-close" onclick="closeModal('orderDetailModal')">&times;</button>
+    </div>
+    <div class="modal-body" id="orderDetailContent"></div>
+  </div>
+</div>
+
+<!-- Milestone Modal -->
+<div class="modal-overlay" id="milestoneModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2 id="msModalTitle">Add Milestone</h2>
+      <button class="modal-close" onclick="closeModal('milestoneModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="msEditId">
+      <input type="hidden" id="msOrderId">
+      <div class="grid-2">
+        <div class="form-group"><label>Milestone Name (12 char)</label>
+          <input type="text" id="msName" maxlength="12"></div>
+        <div class="form-group"><label>Scheduled Date</label>
+          <input type="date" id="msDate"></div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label>Payment Amount ($)</label>
+          <input type="number" id="msAmount" step="0.01" min="0"></div>
+        <div class="form-group"><label>Type</label>
+          <select id="msType"><option>Estimate</option><option>Confirmed</option></select></div>
+      </div>
+      <div class="form-group"><label>Description (50 char)</label>
+        <input type="text" id="msDesc" maxlength="50"></div>
+      <div class="form-group" id="msRescheduleGroup" style="display:none;">
+        <label>Rescheduled Date</label>
+        <input type="date" id="msReschedDate">
+        <label style="margin-top:8px;">Rescheduling Reason</label>
+        <input type="text" id="msReschedReason">
+      </div>
+      <div class="form-group" id="msChangeReasonGroup" style="display:none;">
+        <label>Change Reason (for audit trail)</label>
+        <input type="text" id="msChangeReason"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('milestoneModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMilestone()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice Modal -->
+<div class="modal-overlay" id="invoiceModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2>Create Invoice</h2>
+      <button class="modal-close" onclick="closeModal('invoiceModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="invOrderId">
+      <div class="form-group"><label>Milestone</label>
+        <select id="invMilestone"></select></div>
+      <div class="grid-2">
+        <div class="form-group"><label>Invoice Number</label>
+          <input type="text" id="invNumber"></div>
+        <div class="form-group"><label>Invoice Date</label>
+          <input type="date" id="invDate"></div>
+      </div>
+      <div class="form-group"><label>Invoice Amount ($)</label>
+        <input type="number" id="invAmount" step="0.01" min="0"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('invoiceModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveInvoice()">Save Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal-overlay" id="receiptModal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2>Record Receipt</h2>
+      <button class="modal-close" onclick="closeModal('receiptModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rcptInvoiceId">
+      <div class="grid-2">
+        <div class="form-group"><label>Receipt Date</label>
+          <input type="date" id="rcptDate"></div>
+        <div class="form-group"><label>Receipt Amount ($)</label>
+          <input type="number" id="rcptAmount" step="0.01" min="0"></div>
+      </div>
+      <div class="form-group"><label>Notes</label>
+        <input type="text" id="rcptNotes"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('receiptModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReceipt()">Save Receipt</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ═══════ GLOBALS ═══════
+const API = '/api/orders';
+let currentUser = 'User';
+let allClients = [], allContractTypes = [], allCompanies = [];
+
+// ═══════ INIT ═══════
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const info = await api('GET', '/session-info');
+    currentUser = info.username || 'User';
+  } catch(e) {}
+  loadAdminData();
+  loadOrders();
+  // Set default dates for reports
+  const now = new Date();
+  document.getElementById('backlogMonth').value = now.toISOString().slice(0,7);
+  document.getElementById('scheduleFrom').value = now.toISOString().slice(0,10);
+  const endYear = new Date(now.getFullYear(), 11, 31);
+  document.getElementById('scheduleTo').value = endYear.toISOString().slice(0,10);
+});
+
+// ═══════ API HELPER ═══════
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+function fmt(n) { return '$' + Number(n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+// ═══════ TAB SWITCHING ═══════
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', b.textContent.toLowerCase().includes(name.slice(0,4))));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'invoices') loadOrdersDropdown();
+  if (name === 'orders') loadOrders();
+}
+
+function showModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ═══════ ADMIN: CLIENTS ═══════
+async function loadAdminData() {
+  allClients = await api('GET', '/clients');
+  allContractTypes = await api('GET', '/contract-types');
+  allCompanies = await api('GET', '/companies');
+  renderClients();
+  renderContractTypes();
+  renderCompanies();
+}
+
+function renderClients() {
+  const tb = document.getElementById('clientsTable');
+  tb.innerHTML = allClients.map(c => `<tr>
+    <td><strong>${c.client_id}</strong></td><td>${c.name}</td>
+    <td>${c.billing_name||''}</td><td>${c.billing_email||''}</td>
+    <td><button class="btn btn-sm btn-primary" onclick="editClient(${c.id})">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteClient(${c.id})">Del</button></td>
+  </tr>`).join('');
+}
+
+function showClientForm(id) {
+  document.getElementById('clientEditId').value = '';
+  document.getElementById('clientIdField').value = '';
+  document.getElementById('clientName').value = '';
+  document.getElementById('clientAddress').value = '';
+  document.getElementById('clientContacts').value = '';
+  document.getElementById('clientBillingName').value = '';
+  document.getElementById('clientBillingEmail').value = '';
+  document.getElementById('clientModalTitle').textContent = 'Add Client';
+  showModal('clientModal');
+}
+
+function editClient(id) {
+  const c = allClients.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('clientEditId').value = c.id;
+  document.getElementById('clientIdField').value = c.client_id;
+  document.getElementById('clientName').value = c.name;
+  document.getElementById('clientAddress').value = c.billing_address || '';
+  document.getElementById('clientContacts').value = c.contact_names || '';
+  document.getElementById('clientBillingName').value = c.billing_name || '';
+  document.getElementById('clientBillingEmail').value = c.billing_email || '';
+  document.getElementById('clientModalTitle').textContent = 'Edit Client';
+  showModal('clientModal');
+}
+
+async function saveClient() {
+  const editId = document.getElementById('clientEditId').value;
+  const data = {
+    client_id: document.getElementById('clientIdField').value.trim(),
+    name: document.getElementById('clientName').value.trim(),
+    billing_address: document.getElementById('clientAddress').value.trim(),
+    contact_names: document.getElementById('clientContacts').value.trim(),
+    billing_name: document.getElementById('clientBillingName').value.trim(),
+    billing_email: document.getElementById('clientBillingEmail').value.trim(),
+  };
+  if (!data.client_id || !data.name) return alert('Client ID and Name are required');
+  try {
+    if (editId) await api('PUT', `/clients/${editId}`, data);
+    else await api('POST', '/clients', data);
+    closeModal('clientModal');
+    loadAdminData();
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteClient(id) {
+  if (!confirm('Delete this client?')) return;
+  try { await api('DELETE', `/clients/${id}`); loadAdminData(); }
+  catch(e) { alert(e.message); }
+}
+
+// ═══════ ADMIN: CONTRACT TYPES ═══════
+function renderContractTypes() {
+  const tb = document.getElementById('contractTypesTable');
+  tb.innerHTML = allContractTypes.map(ct => `<tr>
+    <td>${ct.category}</td><td>${ct.subcategory}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="deleteContractType(${ct.id})">Del</button></td>
+  </tr>`).join('');
+}
+
+function showContractTypeForm() { showModal('contractTypeModal'); }
+
+async function saveContractType() {
+  const data = {
+    category: document.getElementById('ctCategory').value,
+    subcategory: document.getElementById('ctSubcategory').value.trim(),
+  };
+  if (!data.subcategory) return alert('Subcategory required');
+  try { await api('POST', '/contract-types', data); closeModal('contractTypeModal'); loadAdminData(); }
+  catch(e) { alert(e.message); }
+}
+
+async function deleteContractType(id) {
+  if (!confirm('Delete this contract type?')) return;
+  try { await api('DELETE', `/contract-types/${id}`); loadAdminData(); }
+  catch(e) { alert(e.message); }
+}
+
+// ═══════ ADMIN: COMPANIES ═══════
+function renderCompanies() {
+  const tb = document.getElementById('companiesTable');
+  tb.innerHTML = allCompanies.map(c => `<tr>
+    <td>${c.name}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="deleteCompany(${c.id})">Del</button></td>
+  </tr>`).join('');
+}
+
+function showCompanyForm() { showModal('companyModal'); }
+
+async function saveCompany() {
+  const name = document.getElementById('companyName').value.trim();
+  if (!name) return alert('Company name required');
+  try { await api('POST', '/companies', {name}); closeModal('companyModal'); loadAdminData(); }
+  catch(e) { alert(e.message); }
+}
+
+async function deleteCompany(id) {
+  if (!confirm('Delete this company?')) return;
+  try { await api('DELETE', `/companies/${id}`); loadAdminData(); }
+  catch(e) { alert(e.message); }
+}
+
+// ═══════ ORDERS ═══════
+async function loadOrders() {
+  const search = document.getElementById('orderSearch')?.value || '';
+  const orders = await api('GET', `/orders?search=${encodeURIComponent(search)}`);
+  const totalAmount = orders.reduce((s,o) => s + (o.contract_amount||0), 0);
+  document.getElementById('orderStats').innerHTML = `
+    <div class="stat-card"><div class="label">Total Orders</div><div class="value">${orders.length}</div></div>
+    <div class="stat-card"><div class="label">Total Contract Value</div><div class="value">${fmt(totalAmount)}</div></div>
+  `;
+  const tb = document.getElementById('ordersTable');
+  tb.innerHTML = orders.map(o => `<tr>
+    <td><a href="#" onclick="openOrderDetail(${o.id}); return false;" style="color:#0f3460; font-weight:600;">${o.order_name}</a></td>
+    <td>${o.client_name}</td><td>${o.contract_type}</td><td>${o.company_name}</td>
+    <td>${o.date_of_order}</td><td style="text-align:right;">${fmt(o.contract_amount)}</td>
+    <td>${o.po_number||''}</td>
+    <td><button class="btn btn-sm btn-primary" onclick="editOrder(${o.id})">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteOrder(${o.id})">Del</button></td>
+  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center; color:#888; padding:20px;">No orders yet. Click "+ New Order" to create one.</td></tr>';
+}
+
+function populateOrderDropdowns() {
+  const clientSel = document.getElementById('orderClient');
+  const ctSel = document.getElementById('orderContractType');
+  const compSel = document.getElementById('orderCompany');
+  clientSel.innerHTML = '<option value="">Select client...</option>' +
+    allClients.map(c => `<option value="${c.id}">${c.client_id} - ${c.name}</option>`).join('');
+  ctSel.innerHTML = '<option value="">Select type...</option>' +
+    allContractTypes.map(ct => `<option value="${ct.id}">${ct.category} - ${ct.subcategory}</option>`).join('');
+  compSel.innerHTML = '<option value="">Select company...</option>' +
+    allCompanies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+function showOrderForm() {
+  populateOrderDropdowns();
+  document.getElementById('orderEditId').value = '';
+  document.getElementById('orderName').value = '';
+  document.getElementById('orderClient').value = '';
+  document.getElementById('orderContractType').value = '';
+  document.getElementById('orderCompany').value = '';
+  document.getElementById('orderDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('orderPO').value = '';
+  document.getElementById('orderAmount').value = '';
+  document.getElementById('orderModalTitle').textContent = 'New Order';
+  showModal('orderModal');
+}
+
+async function editOrder(id) {
+  populateOrderDropdowns();
+  const o = await api('GET', `/orders/${id}`);
+  document.getElementById('orderEditId').value = o.id;
+  document.getElementById('orderName').value = o.order_name;
+  document.getElementById('orderClient').value = o.client_id;
+  document.getElementById('orderContractType').value = o.contract_type_id;
+  document.getElementById('orderCompany').value = o.company_id;
+  document.getElementById('orderDate').value = o.date_of_order;
+  document.getElementById('orderPO').value = o.po_number;
+  document.getElementById('orderAmount').value = o.contract_amount;
+  document.getElementById('orderModalTitle').textContent = 'Edit Order';
+  showModal('orderModal');
+}
+
+async function saveOrder() {
+  const editId = document.getElementById('orderEditId').value;
+  const data = {
+    order_name: document.getElementById('orderName').value.trim(),
+    client_id: parseInt(document.getElementById('orderClient').value),
+    contract_type_id: parseInt(document.getElementById('orderContractType').value),
+    company_id: parseInt(document.getElementById('orderCompany').value),
+    date_of_order: document.getElementById('orderDate').value,
+    po_number: document.getElementById('orderPO').value.trim(),
+    contract_amount: parseFloat(document.getElementById('orderAmount').value) || 0,
+    created_by: currentUser,
+  };
+  if (!data.order_name || !data.client_id || !data.contract_type_id || !data.company_id || !data.date_of_order) {
+    return alert('Please fill in all required fields');
+  }
+  try {
+    if (editId) await api('PUT', `/orders/${editId}`, data);
+    else await api('POST', '/orders', data);
+    closeModal('orderModal');
+    loadOrders();
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  try { await api('DELETE', `/orders/${id}`); loadOrders(); }
+  catch(e) { alert(e.message); }
+}
+
+// ═══════ ORDER DETAIL ═══════
+async function openOrderDetail(id) {
+  const o = await api('GET', `/orders/${id}`);
+  const diffClass = o.amount_difference > 0.01 ? 'amount-diff-pos' :
+                    o.amount_difference < -0.01 ? 'amount-diff-neg' : 'amount-diff-zero';
+  document.getElementById('detailTitle').textContent = `Order: ${o.order_name}`;
+
+  let msRows = o.milestones.map(m => `<tr>
+    <td>${m.milestone_name}</td><td>${m.scheduled_date}</td>
+    <td style="text-align:right;">${fmt(m.payment_amount)}</td>
+    <td><span class="badge ${m.milestone_type==='Confirmed'?'badge-green':'badge-yellow'}">${m.milestone_type}</span></td>
+    <td>${m.is_billed ? '<span class="badge badge-blue">Billed</span>' : ''}</td>
+    <td>${m.description||''}</td>
+    <td><button class="btn btn-sm btn-primary" onclick="editMilestone(${m.id}, ${id})">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMilestone(${m.id}, ${id})">Del</button></td>
+  </tr>`).join('');
+
+  let noteRows = o.notes.map(n => `<div class="note-item">
+    <div>${n.note_text}</div>
+    <div class="meta">${n.note_date} — ${n.login_name}</div>
+  </div>`).join('') || '<p style="color:#888;">No notes yet.</p>';
+
+  document.getElementById('orderDetailContent').innerHTML = `
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div>
+        <p><strong>Client:</strong> ${o.client_code} — ${o.client_name}</p>
+        <p><strong>Contract Type:</strong> ${o.contract_type}</p>
+        <p><strong>Company:</strong> ${o.company_name}</p>
+      </div>
+      <div>
+        <p><strong>Date:</strong> ${o.date_of_order}</p>
+        <p><strong>PO#:</strong> ${o.po_number || 'N/A'}</p>
+        <p><strong>Contract Amount:</strong> ${fmt(o.contract_amount)}</p>
+      </div>
+    </div>
+    <div class="stat-cards" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="label">Contract Amount</div><div class="value">${fmt(o.contract_amount)}</div></div>
+      <div class="stat-card"><div class="label">Milestone Total</div><div class="value">${fmt(o.milestone_total)}</div></div>
+      <div class="stat-card"><div class="label">Difference</div><div class="value ${diffClass}">${fmt(o.amount_difference)}</div></div>
+    </div>
+    <div class="card" style="box-shadow:none; border:1px solid #eee;">
+      <div class="card-header">
+        <h3>Milestones (${o.milestones.length}/15)</h3>
+        <button class="btn btn-primary btn-sm" onclick="showMilestoneForm(${id})">+ Add Milestone</button>
+      </div>
+      <div class="card-body">
+        <table><thead><tr><th>Name</th><th>Date</th><th>Amount</th><th>Type</th><th>Billed</th><th>Desc</th><th>Actions</th></tr></thead>
+        <tbody>${msRows || '<tr><td colspan="7" style="text-align:center; color:#888;">No milestones</td></tr>'}</tbody></table>
+      </div>
+    </div>
+    <div class="card" style="box-shadow:none; border:1px solid #eee; margin-top:12px;">
+      <div class="card-header">
+        <h3>Performance Notes (${o.notes.length}/50)</h3>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="newNoteText" maxlength="50" placeholder="Add a note..." style="width:300px;">
+          <button class="btn btn-primary btn-sm" onclick="addNote(${id})">Add</button>
+        </div>
+      </div>
+      <div class="card-body">${noteRows}</div>
+    </div>
+  `;
+  showModal('orderDetailModal');
+}
+
+// ═══════ MILESTONES ═══════
+function showMilestoneForm(orderId) {
+  document.getElementById('msEditId').value = '';
+  document.getElementById('msOrderId').value = orderId;
+  document.getElementById('msName').value = '';
+  document.getElementById('msDate').value = '';
+  document.getElementById('msAmount').value = '';
+  document.getElementById('msType').value = 'Estimate';
+  document.getElementById('msDesc').value = '';
+  document.getElementById('msRescheduleGroup').style.display = 'none';
+  document.getElementById('msChangeReasonGroup').style.display = 'none';
+  document.getElementById('msModalTitle').textContent = 'Add Milestone';
+  showModal('milestoneModal');
+}
+
+async function editMilestone(msId, orderId) {
+  const milestones = await api('GET', `/orders/${orderId}/milestones`);
+  const m = milestones.find(x => x.id === msId);
+  if (!m) return;
+  document.getElementById('msEditId').value = msId;
+  document.getElementById('msOrderId').value = orderId;
+  document.getElementById('msName').value = m.milestone_name;
+  document.getElementById('msDate').value = m.scheduled_date;
+  document.getElementById('msAmount').value = m.payment_amount;
+  document.getElementById('msType').value = m.milestone_type;
+  document.getElementById('msDesc').value = m.description || '';
+  document.getElementById('msReschedDate').value = m.rescheduled_date || '';
+  document.getElementById('msReschedReason').value = m.rescheduling_reason || '';
+  document.getElementById('msRescheduleGroup').style.display = 'block';
+  document.getElementById('msChangeReasonGroup').style.display = 'block';
+  document.getElementById('msChangeReason').value = '';
+  document.getElementById('msModalTitle').textContent = 'Edit Milestone';
+  showModal('milestoneModal');
+}
+
+async function saveMilestone() {
+  const editId = document.getElementById('msEditId').value;
+  const orderId = document.getElementById('msOrderId').value;
+  const data = {
+    milestone_name: document.getElementById('msName').value.trim(),
+    scheduled_date: document.getElementById('msDate').value,
+    payment_amount: parseFloat(document.getElementById('msAmount').value) || 0,
+    milestone_type: document.getElementById('msType').value,
+    description: document.getElementById('msDesc').value.trim(),
+    modified_by: currentUser,
+  };
+  if (!data.milestone_name || !data.scheduled_date) return alert('Name and date required');
+  try {
+    if (editId) {
+      data.rescheduled_date = document.getElementById('msReschedDate').value || null;
+      data.rescheduling_reason = document.getElementById('msReschedReason').value || '';
+      data.change_reason = document.getElementById('msChangeReason').value || '';
+      await api('PUT', `/milestones/${editId}`, data);
+    } else {
+      await api('POST', `/orders/${orderId}/milestones`, data);
+    }
+    closeModal('milestoneModal');
+    openOrderDetail(parseInt(orderId));
+  } catch(e) { alert(e.message); }
+}
+
+async function deleteMilestone(msId, orderId) {
+  if (!confirm('Delete this milestone?')) return;
+  try { await api('DELETE', `/milestones/${msId}`); openOrderDetail(orderId); }
+  catch(e) { alert(e.message); }
+}
+
+// ═══════ NOTES ═══════
+async function addNote(orderId) {
+  const text = document.getElementById('newNoteText').value.trim();
+  if (!text) return alert('Enter note text');
+  try {
+    await api('POST', `/orders/${orderId}/notes`, { note_text: text, login_name: currentUser });
+    openOrderDetail(orderId);
+  } catch(e) { alert(e.message); }
+}
+
+// ═══════ INVOICES TAB ═══════
+async function loadOrdersDropdown() {
+  const orders = await api('GET', '/orders');
+  const sel = document.getElementById('invoiceOrderSelect');
+  sel.innerHTML = '<option value="">Select an order...</option>' +
+    orders.map(o => `<option value="${o.id}">${o.order_name} — ${o.client_name} (${fmt(o.contract_amount)})</option>`).join('');
+}
+
+async function loadInvoicesForOrder(orderId) {
+  if (!orderId) {
+    document.getElementById('invoicesContent').innerHTML = '<p style="color:#888; text-align:center; padding:40px;">Select an order.</p>';
+    return;
+  }
+  const order = await api('GET', `/orders/${orderId}`);
+  const invoices = await api('GET', `/orders/${orderId}/invoices`);
+
+  let invRows = '';
+  for (const inv of invoices) {
+    const receipts = await api('GET', `/invoices/${inv.id}/receipts`);
+    let rcptRows = receipts.map(r => `<tr style="background:#f9fafb;">
+      <td style="padding-left:40px;">${r.receipt_date}</td>
+      <td style="text-align:right;">${fmt(r.receipt_amount)}</td>
+      <td style="text-align:right;" class="${r.difference > 0.01 ? 'amount-diff-pos' : r.difference < -0.01 ? 'amount-diff-neg' : ''}">${fmt(r.difference)}</td>
+      <td>${r.receipt_notes||''}</td>
+    </tr>`).join('');
+
+    invRows += `<tr>
+      <td><strong>${inv.invoice_number}</strong></td><td>${inv.milestone_name}</td>
+      <td>${inv.invoice_date}</td><td style="text-align:right;">${fmt(inv.invoice_amount)}</td>
+      <td style="text-align:right;">${fmt(inv.total_received)}</td>
+      <td style="text-align:right;" class="${inv.balance > 0.01 ? 'amount-diff-neg' : 'amount-diff-zero'}">${fmt(inv.balance)}</td>
+      <td><button class="btn btn-sm btn-success" onclick="showReceiptForm(${inv.id})">+ Receipt</button></td>
+    </tr>${rcptRows}`;
+  }
+
+  document.getElementById('invoicesContent').innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h3>${order.order_name} — ${order.client_name}</h3>
+      <button class="btn btn-primary" onclick="showInvoiceForm(${orderId})">+ New Invoice</button>
+    </div>
+    <table>
+      <thead><tr><th>Invoice #</th><th>Milestone</th><th>Date</th><th>Amount</th><th>Received</th><th>Balance</th><th>Actions</th></tr></thead>
+      <tbody>${invRows || '<tr><td colspan="7" style="text-align:center; color:#888; padding:20px;">No invoices yet.</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+async function showInvoiceForm(orderId) {
+  document.getElementById('invOrderId').value = orderId;
+  const milestones = await api('GET', `/orders/${orderId}/milestones`);
+  const unbilled = milestones.filter(m => !m.is_billed);
+  document.getElementById('invMilestone').innerHTML =
+    unbilled.map(m => `<option value="${m.id}">${m.milestone_name} — ${fmt(m.payment_amount)}</option>`).join('');
+  if (unbilled.length === 0) {
+    return alert('No unbilled milestones available for this order.');
+  }
+  document.getElementById('invNumber').value = '';
+  document.getElementById('invDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('invAmount').value = unbilled[0]?.payment_amount || '';
+  showModal('invoiceModal');
+}
+
+// Auto-fill amount when milestone changes
+document.getElementById('invMilestone')?.addEventListener('change', async function() {
+  const orderId = document.getElementById('invOrderId').value;
+  const milestones = await api('GET', `/orders/${orderId}/milestones`);
+  const ms = milestones.find(m => m.id === parseInt(this.value));
+  if (ms) document.getElementById('invAmount').value = ms.payment_amount;
+});
+
+async function saveInvoice() {
+  const orderId = document.getElementById('invOrderId').value;
+  const data = {
+    milestone_id: parseInt(document.getElementById('invMilestone').value),
+    invoice_number: document.getElementById('invNumber').value.trim(),
+    invoice_date: document.getElementById('invDate').value,
+    invoice_amount: parseFloat(document.getElementById('invAmount').value) || 0,
+    created_by: currentUser,
+  };
+  if (!data.invoice_number || !data.invoice_date) return alert('Invoice number and date required');
+  try {
+    await api('POST', `/orders/${orderId}/invoices`, data);
+    closeModal('invoiceModal');
+    loadInvoicesForOrder(orderId);
+  } catch(e) { alert(e.message); }
+}
+
+function showReceiptForm(invoiceId) {
+  document.getElementById('rcptInvoiceId').value = invoiceId;
+  document.getElementById('rcptDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('rcptAmount').value = '';
+  document.getElementById('rcptNotes').value = '';
+  showModal('receiptModal');
+}
+
+async function saveReceipt() {
+  const invoiceId = document.getElementById('rcptInvoiceId').value;
+  const data = {
+    receipt_date: document.getElementById('rcptDate').value,
+    receipt_amount: parseFloat(document.getElementById('rcptAmount').value) || 0,
+    receipt_notes: document.getElementById('rcptNotes').value.trim(),
+    created_by: currentUser,
+  };
+  if (!data.receipt_date || !data.receipt_amount) return alert('Date and amount required');
+  try {
+    await api('POST', `/invoices/${invoiceId}/receipts`, data);
+    closeModal('receiptModal');
+    // Reload the invoices for current order
+    const orderId = document.getElementById('invoiceOrderSelect').value;
+    if (orderId) loadInvoicesForOrder(orderId);
+  } catch(e) { alert(e.message); }
+}
+
+// ═══════ REPORTS ═══════
+async function loadBacklogReport() {
+  const month = document.getElementById('backlogMonth').value;
+  if (!month) return alert('Select a start month');
+  const data = await api('GET', `/reports/backlog?start_month=${month}`);
+  let rows = data.rows.map(r => `<tr>
+    <td>${r.order_name}</td><td>${r.client_name}</td><td>${r.milestone_name}</td>
+    <td>${r.scheduled_date}</td><td style="text-align:right;">${fmt(r.payment_amount)}</td>
+    <td><span class="badge ${r.milestone_type==='Confirmed'?'badge-green':'badge-yellow'}">${r.milestone_type}</span></td>
+  </tr>`).join('');
+  document.getElementById('backlogContent').innerHTML = `
+    <p style="margin-bottom:12px;"><strong>Period:</strong> ${data.period} &nbsp; | &nbsp; <strong>Total Backlog:</strong> ${fmt(data.total)}</p>
+    <table>
+      <thead><tr><th>Order</th><th>Client</th><th>Milestone</th><th>Date</th><th>Amount</th><th>Type</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="6" style="text-align:center; color:#888;">No unbilled milestones in this period.</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+async function loadScheduleReport() {
+  const from = document.getElementById('scheduleFrom').value;
+  const to = document.getElementById('scheduleTo').value;
+  if (!from || !to) return alert('Select both dates');
+  const data = await api('GET', `/reports/milestone-schedule?date_from=${from}&date_to=${to}`);
+  let rows = data.rows.map(r => `<tr>
+    <td>${r.order_name}</td><td>${r.client_name}</td><td>${r.milestone_name}</td>
+    <td>${r.scheduled_date}</td><td style="text-align:right;">${fmt(r.payment_amount)}</td>
+    <td><span class="badge ${r.milestone_type==='Confirmed'?'badge-green':'badge-yellow'}">${r.milestone_type}</span></td>
+    <td>${r.is_billed ? '<span class="badge badge-blue">Billed</span>' : ''}</td>
+  </tr>`).join('');
+  document.getElementById('scheduleContent').innerHTML = `
+    <p style="margin-bottom:12px;"><strong>Period:</strong> ${from} to ${to} &nbsp; | &nbsp; <strong>Total:</strong> ${fmt(data.total)}</p>
+    <table>
+      <thead><tr><th>Order</th><th>Client</th><th>Milestone</th><th>Date</th><th>Amount</th><th>Type</th><th>Billed</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="7" style="text-align:center; color:#888;">No milestones in this period.</td></tr>'}</tbody>
+    </table>
+  `;
+}
+</script>
+</body>
+</html>

@@ -205,6 +205,7 @@ def build_employee_deductions_df(ded_mod, pdf_path: str) -> pd.DataFrame:
     master_src = subtables[master_idx].copy()
 
     master = master_src[["Check Date"] + [c for c in master_src.columns if c not in ("Check Date") and not c.startswith("_") and c != "RowPos"]]
+    master = master.drop_duplicates().reset_index(drop=True)
     master = ded_mod.add_occur(master).fillna(0.0)
 
     parts = [t for i, t in enumerate(subtables) if i != master_idx]
@@ -215,6 +216,7 @@ def build_employee_deductions_df(ded_mod, pdf_path: str) -> pd.DataFrame:
     for part in parts:
         part_clean = part.copy()
         part_clean = part_clean[["Check Date"] + [c for c in part_clean.columns if c not in ("Check Date") and not c.startswith("_") and c != "RowPos"]]
+        part_clean = part_clean.drop_duplicates().reset_index(drop=True)
         part_clean = ded_mod.add_occur(part_clean).fillna(0.0)
 
         if "ALL OTHER DEDUCTIONS" in part_clean.columns and "TOTAL" in part_clean.columns and "TOTAL (2)" not in part_clean.columns:

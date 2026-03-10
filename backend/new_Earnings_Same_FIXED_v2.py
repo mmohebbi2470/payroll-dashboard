@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import pdfplumber
 from datetime import datetime
+from typing import Optional
 
 
 # =========================
@@ -453,7 +454,7 @@ def should_skip_dept(dept_text: str) -> bool:
     compact = re.sub(r"\s+", "", dept_text.upper())
     return compact.startswith("****ALLORGANIZATIONALUNITS")
 
-def normalize_department(dept_raw: str, prev_dept: str | None) -> str | None:
+def normalize_department(dept_raw: str, prev_dept: Optional[str]) -> Optional[str]:
     """
     PDFs sometimes print continuation department headers like:
       '**** 100DRIVERS(cont.)' or '**** CONT. 100DRIVERS'
@@ -621,7 +622,14 @@ def parse_earnings(pdf_path: str) -> pd.DataFrame:
                         continue
 
                     label = clean_label_tokens([w["text"] for w in left_words])
-                    if not (DATE_RE.match(label) or label.startswith(("MTD", "QTD", "YTD"))):
+
+                    # Skip MTD/QTD/YTD rows entirely — only keep actual
+                    # payroll-date rows. This prevents page-break continuations
+                    # from duplicating data when summary rows appear on the next page.
+                    if label.upper().startswith(("MTD", "QTD", "YTD")):
+                        continue
+
+                    if not DATE_RE.match(label):
                         # Use page-level date as fallback if row label is not a date
                         if check_date:
                             label = check_date

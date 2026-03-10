@@ -390,13 +390,17 @@ def extract_subtables(page, page_idx, y0, y1):
             first = ln[0]["text"].strip()
             fu = first.upper()
 
-            if DATE_RE.match(first) or ROWLABEL_RE.match(fu) or ROWLABEL_RE.match(fu.replace(" ", "")):
+            is_date = DATE_RE.match(first)
+            is_summary = ROWLABEL_RE.match(fu) or ROWLABEL_RE.match(fu.replace(" ", ""))
+
+            # Skip MTD/QTD/YTD rows entirely — only keep actual
+            # payroll-date rows. This prevents page-break continuations
+            # from duplicating data when summary rows appear on the next page.
+            if is_summary:
+                continue
+
+            if is_date:
                 label = first
-                # If the first token isn't a valid date (e.g. MTD), try page-level date as fallback
-                if not DATE_RE.match(label):
-                    cd_fallback = get_check_date(page)
-                    if cd_fallback:
-                        label = cd_fallback
 
                 row = {"Check Date": label, "_page": page_idx, "_table_top": float(lines[ci][0]["top"]), "States": ""}
                 for c in col_mids:
@@ -599,6 +603,7 @@ def build_table(pdf_path: str, section_name: str) -> pd.DataFrame:
     col_order = list(master.columns)
     for part in subtables:
         part_clean = part[[c for c in part.columns if not c.startswith("_")]]
+        part_clean = part_clean.drop_duplicates().reset_index(drop=True)
         part_clean = add_occur(part_clean).fillna(0.0)
         master = merge_on_date_occur(master, part_clean)
         for c in master.columns:
