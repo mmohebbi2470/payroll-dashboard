@@ -28,6 +28,8 @@
   .btn-sm { padding: 4px 10px; font-size: 12px; }
   .btn-success { background: #22c55e; color: white; }
   .btn-success:hover { background: #16a34a; }
+  .btn-edit { background: #e2e8f0; color: #334155; }
+  .btn-edit:hover { background: #cbd5e1; }
   .form-input { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px;
                 font-size: 13px; }
   .form-input:focus { outline: none; border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,0.1); }
@@ -64,58 +66,24 @@
 
   <!-- Tab Navigation -->
   <div style="display: flex; gap: 4px; margin-bottom: 0;">
-    <button class="tab-btn active" onclick="showTab('admin')">Admin Setup</button>
-    <button class="tab-btn" onclick="showTab('orders')">Orders</button>
-    <button class="tab-btn" onclick="showTab('invoices')">Invoices & Receipts</button>
-    <button class="tab-btn" onclick="showTab('reports')">Reports</button>
+    <button class="tab-btn active" onclick="showTab('accounts', this)">Accounts</button>
+    <button class="tab-btn" onclick="showTab('orders', this)">Orders</button>
+    <button class="tab-btn" onclick="showTab('invoices', this)">Invoices & Receipts</button>
+    <button class="tab-btn" onclick="showTab('reports', this)">Reports</button>
+    <button id="adminTabBtn" class="tab-btn" onclick="showTab('admin', this)" style="margin-left:auto; background:#f0e6d3; color:#8b6914;">Admin</button>
   </div>
 
   <!-- ═══════════════════════════════════════ -->
-  <!--  ADMIN PANEL                           -->
+  <!--  ACCOUNTS PANEL (Clients)              -->
   <!-- ═══════════════════════════════════════ -->
-  <div id="panel-admin" class="panel active">
-    <div class="grid grid-cols-3 gap-6">
-
-      <!-- Clients -->
-      <div>
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="section-title" style="margin:0;border:none;padding:0;">Clients</h3>
-          <button class="btn btn-primary btn-sm" onclick="openClientModal()">+ Add Client</button>
-        </div>
-        <div style="max-height: 400px; overflow-y: auto;">
-          <table class="data-table" id="clientsTable"><thead><tr>
-            <th>ID</th><th>Name</th><th>Email</th><th></th>
-          </tr></thead><tbody></tbody></table>
-        </div>
-      </div>
-
-      <!-- Contract Types -->
-      <div>
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="section-title" style="margin:0;border:none;padding:0;">Contract Types</h3>
-          <button class="btn btn-primary btn-sm" onclick="openContractTypeModal()">+ Add Type</button>
-        </div>
-        <div style="max-height: 400px; overflow-y: auto;">
-          <table class="data-table" id="contractTypesTable"><thead><tr>
-            <th>Category</th><th>Subcategory</th><th></th>
-          </tr></thead><tbody></tbody></table>
-        </div>
-      </div>
-
-      <!-- Companies -->
-      <div>
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="section-title" style="margin:0;border:none;padding:0;">Companies</h3>
-          <button class="btn btn-primary btn-sm" onclick="openCompanyModal()">+ Add</button>
-        </div>
-        <div style="max-height: 400px; overflow-y: auto;">
-          <table class="data-table" id="companiesTable"><thead><tr>
-            <th>Name</th><th></th>
-          </tr></thead><tbody></tbody></table>
-        </div>
-      </div>
-
+  <div id="panel-accounts" class="panel active">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="section-title" style="margin:0;border:none;padding:0;">Clients / Accounts</h3>
+      <button class="btn btn-primary" onclick="openClientModal()">+ Add Client</button>
     </div>
+    <table class="data-table" id="clientsTable"><thead><tr>
+      <th>Client ID</th><th>Name</th><th>Billing Address</th><th>Contact</th><th>Billing Name</th><th>Email</th><th></th>
+    </tr></thead><tbody></tbody></table>
   </div>
 
   <!-- ═══════════════════════════════════════ -->
@@ -148,7 +116,6 @@
   <!-- ═══════════════════════════════════════ -->
   <div id="panel-reports" class="panel">
     <div class="grid grid-cols-2 gap-6">
-      <!-- Backlog Report -->
       <div>
         <h3 class="section-title">Total Backlog Report</h3>
         <div class="flex gap-3 items-end mb-4">
@@ -160,7 +127,6 @@
         </div>
         <div id="backlogResults"></div>
       </div>
-      <!-- Milestone Schedule -->
       <div>
         <h3 class="section-title">Milestone Schedule</h3>
         <div class="flex gap-3 items-end mb-4">
@@ -176,6 +142,54 @@
         </div>
         <div id="scheduleResults"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  ADMIN PANEL (Users, Contract Types, Companies) -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="panel-admin" class="panel">
+    <div class="grid grid-cols-3 gap-6">
+
+      <!-- Users -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Users</h3>
+          <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Add User</button>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" id="usersTable"><thead><tr>
+            <th>Username</th><th>Full Name</th><th>Role</th><th>Permissions</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Contract Types -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Contract Types</h3>
+          <button class="btn btn-primary btn-sm" onclick="openContractTypeModal()">+ Add Type</button>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" id="contractTypesTable"><thead><tr>
+            <th>Category</th><th>Subcategory</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Companies -->
+      <div>
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Companies</h3>
+          <button class="btn btn-primary btn-sm" onclick="openCompanyModal()">+ Add</button>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+          <table class="data-table" id="companiesTable"><thead><tr>
+            <th>Name</th><th></th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -211,10 +225,86 @@
 </div>
 </div>
 
+<!-- User Modal -->
+<div class="modal-overlay" id="userModal">
+<div class="modal" style="max-width:600px;">
+  <h3 class="section-title" id="userModalTitle">Add User</h3>
+  <input type="hidden" id="userEditRow">
+  <div class="grid gap-3 mb-4">
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="form-label">Username</label>
+        <input class="form-input" id="fUserName"></div>
+      <div><label class="form-label">Password</label>
+        <input class="form-input" id="fUserPass" type="text"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="form-label">Full Name</label>
+        <input class="form-input" id="fUserFullname"></div>
+      <div><label class="form-label">Role</label>
+        <select class="form-input" id="fUserRole">
+          <option value="Admin">Admin</option>
+          <option value="User" selected>User</option>
+        </select></div>
+    </div>
+  </div>
+
+  <!-- Module Permissions -->
+  <div style="margin-top:12px; padding:14px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+    <h4 style="font-size:13px; font-weight:700; color:#0f3460; margin-bottom:10px;">Module Permissions</h4>
+    <table style="width:100%; font-size:13px; border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:2px solid #e2e8f0;">
+          <th style="text-align:left; padding:6px 8px; color:#475569;">Module</th>
+          <th style="text-align:center; padding:6px 8px; color:#475569; width:80px;">Edit</th>
+          <th style="text-align:center; padding:6px 8px; color:#475569; width:80px;">Read</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px;">SAP Reports</td>
+          <td style="text-align:center;"><input type="radio" name="perm_sap_reports" value="Edit" checked></td>
+          <td style="text-align:center;"><input type="radio" name="perm_sap_reports" value="Read"></td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px;">Payroll Reports</td>
+          <td style="text-align:center;"><input type="radio" name="perm_payroll_reports" value="Edit" checked></td>
+          <td style="text-align:center;"><input type="radio" name="perm_payroll_reports" value="Read"></td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px;">Orders Backlog - Accounts</td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_accounts" value="Edit" checked></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_accounts" value="Read"></td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px;">Orders Backlog - Orders</td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_orders" value="Edit" checked></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_orders" value="Read"></td>
+        </tr>
+        <tr style="border-bottom:1px solid #f1f5f9;">
+          <td style="padding:6px 8px;">Orders Backlog - Invoices</td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_invoices" value="Edit" checked></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_invoices" value="Read"></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 8px;">Orders Backlog - Reports</td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_reports" value="Edit" checked></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_reports" value="Read"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex justify-end gap-2 mt-4">
+    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('userModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="saveUser()">Save</button>
+  </div>
+</div>
+</div>
+
 <!-- Contract Type Modal -->
 <div class="modal-overlay" id="contractTypeModal">
 <div class="modal" style="max-width:400px;">
-  <h3 class="section-title">Add Contract Type</h3>
+  <h3 class="section-title" id="ctModalTitle">Add Contract Type</h3>
   <input type="hidden" id="ctEditId">
   <div class="grid gap-3 mb-4">
     <div><label class="form-label">Category</label>
@@ -236,7 +326,7 @@
 <!-- Company Modal -->
 <div class="modal-overlay" id="companyModal">
 <div class="modal" style="max-width:350px;">
-  <h3 class="section-title">Add Company</h3>
+  <h3 class="section-title" id="compModalTitle">Add Company</h3>
   <input type="hidden" id="compEditId">
   <div class="mb-4">
     <label class="form-label">Company Name</label>
@@ -255,7 +345,6 @@
   <h3 class="section-title" id="orderModalTitle">New Order</h3>
   <input type="hidden" id="orderEditId">
 
-  <!-- Basic Info -->
   <div class="grid grid-cols-3 gap-3 mb-4">
     <div><label class="form-label">Client</label>
       <select class="form-input" id="fOrderClient"></select></div>
@@ -278,7 +367,6 @@
     <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
   </div>
 
-  <!-- Milestones (only shown when editing existing order) -->
   <div id="milestonesSection" style="display:none;">
     <div class="flex justify-between items-center mb-3">
       <h4 class="section-title" style="margin:0;border:none;padding:0;">
@@ -291,7 +379,6 @@
       <th>Name</th><th>Scheduled</th><th>Amount</th><th>Type</th><th>Rescheduled</th><th>Description</th><th>Billed</th><th></th>
     </tr></thead><tbody></tbody></table>
 
-    <!-- Inline milestone form -->
     <div id="milestoneForm" style="display:none; margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px;">
       <input type="hidden" id="msEditId">
       <div class="grid grid-cols-4 gap-3 mb-3">
@@ -323,7 +410,6 @@
       </div>
     </div>
 
-    <!-- Notes Section -->
     <div class="mt-6">
       <div class="flex justify-between items-center mb-3">
         <h4 class="section-title" style="margin:0;border:none;padding:0;">
@@ -337,7 +423,6 @@
       <div id="notesList" style="max-height:200px; overflow-y:auto;"></div>
     </div>
 
-    <!-- PDF Uploads -->
     <div class="mt-6 grid grid-cols-2 gap-4">
       <div>
         <label class="form-label">Contract PDF</label>
@@ -407,7 +492,9 @@
 
 <script>
 const API = window.location.origin;
-let allClients = [], allTypes = [], allCompanies = [], allOrders = [], currentOrder = null;
+let allClients = [], allTypes = [], allCompanies = [], allOrders = [], allUsers = [], currentOrder = null;
+let currentSession = { role: 'User', permissions: {} };
+const PERM_KEYS = ['sap_reports', 'payroll_reports', 'ob_accounts', 'ob_orders', 'ob_invoices', 'ob_reports'];
 
 // ── Helpers ──────────────────────────────
 function fmt(n) { return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n||0); }
@@ -430,13 +517,19 @@ async function apiDelete(path) {
   return apiFetch(path, { method:'DELETE' });
 }
 
-function showTab(name) {
+function showTab(name, btn) {
+  if (name === 'admin' && currentSession.role !== 'Admin') {
+    alert('Admin access required. Only Admin users can access this tab.');
+    return;
+  }
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
-  event.target.classList.add('active');
+  btn.classList.add('active');
   if (name === 'orders') loadOrders();
   if (name === 'invoices') loadInvoices();
+  if (name === 'admin') { loadUsers(); loadContractTypes(); loadCompanies(); }
+  if (name === 'accounts') loadClients();
 }
 
 function openModal(id) { document.getElementById(id).classList.add('show'); }
@@ -444,8 +537,105 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 
 // ── Init ─────────────────────────────────
 async function init() {
+  // Fetch current user session (role + permissions)
+  try {
+    const sess = await apiFetch('/api/session');
+    if (sess) {
+      currentSession = sess;
+      // Hide Admin tab button entirely for non-Admin users
+      if (currentSession.role !== 'Admin') {
+        const adminBtn = document.getElementById('adminTabBtn');
+        if (adminBtn) adminBtn.style.display = 'none';
+      }
+    }
+  } catch(e) { console.warn('Could not load session', e); }
   await Promise.all([loadClients(), loadContractTypes(), loadCompanies()]);
   loadOrders();
+}
+
+// ── Users ────────────────────────────────
+function permBadge(val) {
+  return val === 'Read'
+    ? '<span class="badge" style="background:#fef3c7;color:#92400e;font-size:10px;">Read</span>'
+    : '<span class="badge" style="background:#dcfce7;color:#166534;font-size:10px;">Edit</span>';
+}
+
+async function loadUsers() {
+  allUsers = await apiFetch('/api/users') || [];
+  const tbody = document.querySelector('#usersTable tbody');
+  tbody.innerHTML = allUsers.map(u => {
+    const perms = u.permissions || {};
+    return `<tr>
+    <td>${u.username}</td><td>${u.fullname}</td>
+    <td><span class="badge ${u.role==='Admin'?'badge-amber':'badge-blue'}">${u.role}</span></td>
+    <td style="font-size:11px;">
+      SAP ${permBadge(perms.sap_reports)}
+      Pay ${permBadge(perms.payroll_reports)}
+      Acct ${permBadge(perms.ob_accounts)}
+      Ord ${permBadge(perms.ob_orders)}
+      Inv ${permBadge(perms.ob_invoices)}
+      Rpt ${permBadge(perms.ob_reports)}
+    </td>
+    <td>
+      <button class="btn btn-edit btn-sm" onclick="editUser(${u.row})">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.row}, '${u.username}')">Del</button>
+    </td>
+  </tr>`;
+  }).join('');
+}
+
+function openUserModal(data) {
+  document.getElementById('userEditRow').value = data ? data.row : '';
+  document.getElementById('fUserName').value = data ? data.username : '';
+  document.getElementById('fUserPass').value = data ? data.password : '';
+  document.getElementById('fUserFullname').value = data ? data.fullname : '';
+  document.getElementById('fUserRole').value = data ? data.role : 'User';
+  document.getElementById('userModalTitle').textContent = data ? 'Edit User' : 'Add User';
+  // Set permission radio buttons
+  PERM_KEYS.forEach(key => {
+    const val = (data && data.permissions && data.permissions[key]) ? data.permissions[key] : 'Edit';
+    const radio = document.querySelector('input[name="perm_' + key + '"][value="' + val + '"]');
+    if (radio) radio.checked = true;
+  });
+  openModal('userModal');
+}
+
+function editUser(row) {
+  const u = allUsers.find(u => u.row === row);
+  if (u) openUserModal(u);
+}
+
+async function saveUser() {
+  const editRow = document.getElementById('userEditRow').value;
+  // Collect permission radio button values
+  const permissions = {};
+  PERM_KEYS.forEach(key => {
+    const checked = document.querySelector('input[name="perm_' + key + '"]:checked');
+    permissions[key] = checked ? checked.value : 'Edit';
+  });
+  const body = {
+    username: document.getElementById('fUserName').value.trim(),
+    password: document.getElementById('fUserPass').value.trim(),
+    fullname: document.getElementById('fUserFullname').value.trim(),
+    role: document.getElementById('fUserRole').value,
+    permissions: permissions,
+  };
+  if (!body.username || !body.password) return alert('Username and Password are required');
+  let result;
+  if (editRow) {
+    result = await apiPut('/api/users/' + editRow, body);
+  } else {
+    result = await apiPost('/api/users', body);
+  }
+  if (result && result.error) return alert(result.error);
+  closeModal('userModal');
+  loadUsers();
+}
+
+async function deleteUser(row, username) {
+  if (!confirm('Delete user "' + username + '"?')) return;
+  await apiDelete('/api/users/' + row);
+  loadUsers();
 }
 
 // ── Clients ──────────────────────────────
@@ -453,9 +643,10 @@ async function loadClients() {
   allClients = await apiFetch('/api/clients') || [];
   const tbody = document.querySelector('#clientsTable tbody');
   tbody.innerHTML = allClients.map(c => `<tr>
-    <td>${c.client_id}</td><td>${c.name}</td><td>${c.billing_email}</td>
+    <td>${c.client_id}</td><td>${c.name}</td><td>${c.billing_address || ''}</td>
+    <td>${c.contact_names || ''}</td><td>${c.billing_name || ''}</td><td>${c.billing_email || ''}</td>
     <td>
-      <button class="btn btn-sm" style="background:#e2e8f0;" onclick="editClient(${c.id})">Edit</button>
+      <button class="btn btn-edit btn-sm" onclick="editClient(${c.id})">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="deleteClient(${c.id})">Del</button>
     </td>
   </tr>`).join('');
@@ -506,23 +697,38 @@ async function loadContractTypes() {
   const tbody = document.querySelector('#contractTypesTable tbody');
   tbody.innerHTML = allTypes.map(t => `<tr>
     <td>${t.category}</td><td>${t.subcategory}</td>
-    <td><button class="btn btn-danger btn-sm" onclick="deleteContractType(${t.id})">Del</button></td>
+    <td>
+      <button class="btn btn-edit btn-sm" onclick="editContractType(${t.id})">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteContractType(${t.id})">Del</button>
+    </td>
   </tr>`).join('');
 }
 
-function openContractTypeModal() {
-  document.getElementById('ctEditId').value = '';
-  document.getElementById('fCtSubcategory').value = '';
+function openContractTypeModal(data) {
+  document.getElementById('ctEditId').value = data ? data.id : '';
+  document.getElementById('fCtCategory').value = data ? data.category : 'SaaS';
+  document.getElementById('fCtSubcategory').value = data ? data.subcategory : '';
+  document.getElementById('ctModalTitle').textContent = data ? 'Edit Contract Type' : 'Add Contract Type';
   openModal('contractTypeModal');
 }
 
+function editContractType(id) {
+  const t = allTypes.find(t => t.id === id);
+  if (t) openContractTypeModal(t);
+}
+
 async function saveContractType() {
+  const editId = document.getElementById('ctEditId').value;
   const body = {
     category: document.getElementById('fCtCategory').value,
     subcategory: document.getElementById('fCtSubcategory').value,
   };
   if (!body.subcategory) return alert('Subcategory is required');
-  await apiPost('/api/contract-types', body);
+  if (editId) {
+    await apiPut('/api/contract-types/' + editId, body);
+  } else {
+    await apiPost('/api/contract-types', body);
+  }
   closeModal('contractTypeModal');
   loadContractTypes();
 }
@@ -540,21 +746,33 @@ async function loadCompanies() {
   tbody.innerHTML = allCompanies.map(c => `<tr>
     <td>${c.name}</td>
     <td>
+      <button class="btn btn-edit btn-sm" onclick="editCompany(${c.id})">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="deleteCompany(${c.id})">Del</button>
     </td>
   </tr>`).join('');
 }
 
-function openCompanyModal() {
-  document.getElementById('compEditId').value = '';
-  document.getElementById('fCompName').value = '';
+function openCompanyModal(data) {
+  document.getElementById('compEditId').value = data ? data.id : '';
+  document.getElementById('fCompName').value = data ? data.name : '';
+  document.getElementById('compModalTitle').textContent = data ? 'Edit Company' : 'Add Company';
   openModal('companyModal');
 }
 
+function editCompany(id) {
+  const c = allCompanies.find(c => c.id === id);
+  if (c) openCompanyModal(c);
+}
+
 async function saveCompany() {
+  const editId = document.getElementById('compEditId').value;
   const name = document.getElementById('fCompName').value;
   if (!name) return alert('Company name is required');
-  await apiPost('/api/companies', { name });
+  if (editId) {
+    await apiPut('/api/companies/' + editId, { name });
+  } else {
+    await apiPost('/api/companies', { name });
+  }
   closeModal('companyModal');
   loadCompanies();
 }
@@ -580,7 +798,6 @@ async function loadOrders() {
     <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteOrder(${o.id})">Del</button></td>
   </tr>`).join('');
 
-  // Update stats
   document.getElementById('statOrders').textContent = allOrders.length;
   document.getElementById('statValue').textContent = fmt(allOrders.reduce((s,o) => s + o.contract_amount, 0));
 }
@@ -644,7 +861,6 @@ async function saveOrder() {
     result = await apiPut('/api/orders/' + editId, body);
   } else {
     result = await apiPost('/api/orders', body);
-    // Re-open with full detail if newly created
     if (result && result.id) {
       closeModal('orderModal');
       loadOrders();
@@ -653,7 +869,6 @@ async function saveOrder() {
     }
   }
   loadOrders();
-  // Refresh the detail view
   if (editId) openOrderDetail(editId);
 }
 
@@ -675,7 +890,7 @@ function renderMilestones(milestones) {
     <td>${m.description}</td>
     <td>${m.is_billed ? '<span class="badge badge-green">Yes</span>' : 'No'}</td>
     <td>
-      <button class="btn btn-sm" style="background:#e2e8f0;" onclick="editMilestone(${m.id})">Edit</button>
+      <button class="btn btn-edit btn-sm" onclick="editMilestone(${m.id})">Edit</button>
       ${!m.is_billed ? `<button class="btn btn-danger btn-sm" onclick="deleteMilestone(${m.id})">Del</button>` : ''}
     </td>
   </tr>`).join('');
@@ -807,7 +1022,6 @@ async function loadInvoices() {
 
   document.getElementById('statInvoices').textContent = invoices.filter(i => i.balance > 0).length;
 
-  // Also add "Create Invoice" button at top
   const panel = document.getElementById('panel-invoices');
   if (!panel.querySelector('#createInvBtn')) {
     const btn = document.createElement('button');
@@ -821,7 +1035,6 @@ async function loadInvoices() {
 }
 
 async function openInvoiceModal() {
-  // Populate order dropdown
   const orders = await apiFetch('/api/orders') || [];
   document.getElementById('fInvOrder').innerHTML = '<option value="">-- Select Order --</option>' +
     orders.map(o => `<option value="${o.id}">${o.order_name} - ${o.client_name}</option>`).join('');

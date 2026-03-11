@@ -87,6 +87,8 @@ def get_available_payroll_scripts():
 #  USER AUTHENTICATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+PERM_COLUMNS = ['sap_reports', 'payroll_reports', 'ob_accounts', 'ob_orders', 'ob_invoices', 'ob_reports']
+
 def load_users():
     users = {}
     if not os.path.exists(USERS_FILE):
@@ -96,10 +98,15 @@ def load_users():
         ws = wb.active
         for row in ws.iter_rows(min_row=2, values_only=True):
             if row[0] and row[1]:
+                perms = {}
+                for i, key in enumerate(PERM_COLUMNS):
+                    val = str(row[4 + i]).strip() if len(row) > 4 + i and row[4 + i] else "Edit"
+                    perms[key] = val  # "Edit" or "Read"
                 users[str(row[0]).strip().lower()] = {
                     "password": str(row[1]).strip(),
                     "fullname": str(row[2]).strip() if row[2] else str(row[0]).strip(),
                     "role": str(row[3]).strip() if len(row) > 3 and row[3] else "User",
+                    "permissions": perms,
                 }
         wb.close()
     except Exception as e:
@@ -121,6 +128,7 @@ def create_session(username, user_info):
         "username": username,
         "fullname": user_info["fullname"],
         "role": user_info["role"],
+        "permissions": user_info.get("permissions", {}),
         "expires": time.time() + SESSION_DURATION,
     }
     return sid
@@ -386,6 +394,14 @@ def main_page(session):
         key=_month_sort_key
     )
 
+    def _file_mod_time(full_path):
+        """Get file modification date/time as a formatted string."""
+        try:
+            mtime = os.path.getmtime(full_path)
+            return datetime.fromtimestamp(mtime).strftime("%m/%d/%Y %I:%M %p")
+        except Exception:
+            return ""
+
     def _out_rows(folder, folder_name):
         if not folder:
             return '<div class="align-empty">—</div>'
@@ -393,8 +409,11 @@ def main_page(session):
         for f in sorted(folder["files"]):
             enc = urllib.parse.quote(f)
             fn_enc = urllib.parse.quote(folder_name)
+            full_path = os.path.join(SAP_DIR, folder_name, f)
+            mod_time = _file_mod_time(full_path)
+            time_html = f'<span style="color:#888;font-size:10px;margin-left:6px;">({mod_time})</span>' if mod_time else ''
             html += (f'<div class="align-cell">'
-                     f'<span class="af-name" title="{f}">{f}</span>'
+                     f'<span class="af-name" title="{f}">{f}{time_html}</span>'
                      f'<span class="af-actions">'
                      f'<a href="/view/{fn_enc}/{enc}" target="_blank" class="btn btn-view">View</a>'
                      f'<a href="/view/{fn_enc}/{enc}" target="_blank"'
@@ -402,32 +421,45 @@ def main_page(session):
                      f'</span></div>')
         return html
 
+    def _find_input_file(filename):
+        """Find full path of an input file within INPUT_DIR subdirectories."""
+        for root, dirs, fnames in os.walk(INPUT_DIR):
+            if filename in fnames:
+                return os.path.join(root, filename)
+        return None
+
     def _in_rows(file_list):
         if not file_list:
             return '<div class="align-empty">—</div>'
         html = ""
         for f in sorted(file_list):
             enc = urllib.parse.quote(f)
+            full_path = _find_input_file(f)
+            mod_time = _file_mod_time(full_path) if full_path else ""
+            time_html = f'<span style="color:#888;font-size:10px;margin-left:6px;">({mod_time})</span>' if mod_time else ''
             html += (f'<div class="align-cell">'
-                     f'<span class="af-name" title="{f}">📗 {f}</span>'
+                     f'<span class="af-name" title="{f}">📗 {f}{time_html}</span>'
                      f'<span class="af-actions">'
                      f'<a href="/download-input/{enc}" class="btn btn-dl">Download</a>'
                      f'</span></div>')
         return html
 
     combined_html = ""
-    for month_key in all_month_keys:
+    for idx, month_key in enumerate(all_month_keys):
+        # Collect P&L and BS content for this month
+        month_inner = ""
+
         # P&L section for this month
         pl_out = pl_output_map.get(month_key)
         pl_in  = organized_inputs.get(month_key, {}).get("PL", [])
+        pl_cnt_o = len(pl_out["files"]) if pl_out else 0
+        pl_cnt_i = len(pl_in)
         if pl_out or pl_in:
-            fn      = pl_out["name"] if pl_out else ""
-            cnt_o   = len(pl_out["files"]) if pl_out else 0
-            cnt_i   = len(pl_in)
-            combined_html += (
+            fn = pl_out["name"] if pl_out else ""
+            month_inner += (
                 f'<div class="align-section">'
                 f'<div class="align-hdr pl-hdr">📊 P&amp;L {month_key}'
-                f'<span class="ah-badge">Out: {cnt_o} | In: {cnt_i}</span></div>'
+                f'<span class="ah-badge">Out: {pl_cnt_o} | In: {pl_cnt_i}</span></div>'
                 f'<div class="align-body">'
                 f'<div class="align-col">{_out_rows(pl_out, fn)}</div>'
                 f'<div class="align-col align-col-r">{_in_rows(pl_in)}</div>'
@@ -437,18 +469,37 @@ def main_page(session):
         # BS section for this month (immediately after P&L)
         bs_out = bs_output_map.get(month_key)
         bs_in  = organized_inputs.get(month_key, {}).get("BS", [])
+        bs_cnt_o = len(bs_out["files"]) if bs_out else 0
+        bs_cnt_i = len(bs_in)
         if bs_out or bs_in:
-            fn      = bs_out["name"] if bs_out else ""
-            cnt_o   = len(bs_out["files"]) if bs_out else 0
-            cnt_i   = len(bs_in)
-            combined_html += (
+            fn = bs_out["name"] if bs_out else ""
+            month_inner += (
                 f'<div class="align-section">'
                 f'<div class="align-hdr bs-hdr">📋 Bal-Sht {month_key}'
-                f'<span class="ah-badge">Out: {cnt_o} | In: {cnt_i}</span></div>'
+                f'<span class="ah-badge">Out: {bs_cnt_o} | In: {bs_cnt_i}</span></div>'
                 f'<div class="align-body">'
                 f'<div class="align-col">{_out_rows(bs_out, fn)}</div>'
                 f'<div class="align-col align-col-r">{_in_rows(bs_in)}</div>'
                 f'</div></div>'
+            )
+
+        if month_inner:
+            total_out = pl_cnt_o + bs_cnt_o
+            total_in  = pl_cnt_i + bs_cnt_i
+            # Most recent month (last in sorted list) is expanded by default
+            is_latest = (idx == len(all_month_keys) - 1)
+            collapsed_cls = "" if is_latest else " collapsed"
+            arrow = "&#9660;" if is_latest else "&#9654;"
+            combined_html += (
+                f'<div class="month-group{collapsed_cls}">'
+                f'<div class="month-hdr" onclick="toggleMonth(this)">'
+                f'<span class="month-arrow">{arrow}</span>'
+                f'<span class="month-title">{month_key}</span>'
+                f'<span class="month-summary">P&amp;L: {pl_cnt_o} out / {pl_cnt_i} in &nbsp; | &nbsp; '
+                f'Bal-Sht: {bs_cnt_o} out / {bs_cnt_i} in</span>'
+                f'</div>'
+                f'<div class="month-content">{month_inner}</div>'
+                f'</div>'
             )
 
     if unmatched:
@@ -459,6 +510,27 @@ def main_page(session):
             f'<div class="align-body">'
             f'<div class="align-col"><div class="align-empty">—</div></div>'
             f'<div class="align-col align-col-r">{_in_rows(unmatched)}</div>'
+            f'</div></div>'
+        )
+
+    # Aggregate P&L Output section
+    agg_rel = process_reports.AGGREGATE_RELATIVE
+    agg_full = os.path.join(SAP_DIR, agg_rel)
+    if os.path.isfile(agg_full):
+        import time as _time
+        agg_size = os.path.getsize(agg_full)
+        agg_mod  = datetime.fromtimestamp(os.path.getmtime(agg_full)).strftime("%b %d, %Y %I:%M %p")
+        agg_kb   = f"{agg_size / 1024:.0f} KB"
+        combined_html += (
+            f'<div class="align-section">'
+            f'<div class="align-hdr" style="background:#fff8e1;color:#6d4c00;border-bottom:1px solid #ffe082;">'
+            f'📈 Annual Financial Data</div>'
+            f'<div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-size:13px;">'
+            f'<span>📗 Aggregate P&amp;L Output.xlsx'
+            f'<span style="color:#888;font-size:11px;margin-left:8px;">({agg_kb}, updated {agg_mod})</span></span>'
+            f'<span style="display:flex;gap:5px;">'
+            f'<a href="/download-aggregate" class="btn btn-dl" style="background:#28a745;color:white;padding:4px 10px;border-radius:4px;text-decoration:none;font-size:12px;">Download</a>'
+            f'</span>'
             f'</div></div>'
         )
 
@@ -512,6 +584,19 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
 .ph-right {{ border-left: 1px solid #e0e0e0; justify-content: space-between; }}
 .ph-left h2, .ph-right h2 {{ font-size: 15px; color: #333; }}
 .dash-panel .panel-body {{ overflow-y: auto; flex: 1; padding: 8px; }}
+
+/* Collapsible month groups */
+.month-group {{ margin-bottom: 10px; border: 1px solid #d0d7de; border-radius: 8px; overflow: hidden; }}
+.month-hdr {{ display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+              background: linear-gradient(135deg, #f0f4fa, #e8ecf2); cursor: pointer;
+              border-bottom: 1px solid #d0d7de; user-select: none; }}
+.month-hdr:hover {{ background: linear-gradient(135deg, #e4eaf2, #dce2ea); }}
+.month-arrow {{ font-size: 12px; color: #555; width: 14px; text-align: center; }}
+.month-title {{ font-weight: 700; font-size: 14px; color: #1a3a5c; }}
+.month-summary {{ font-size: 11px; color: #666; margin-left: auto; }}
+.month-content {{ padding: 6px; }}
+.month-group.collapsed .month-content {{ display: none; }}
+.month-group.collapsed .month-hdr {{ border-bottom: none; }}
 
 /* Aligned sections (month-type groups) */
 .align-section {{ margin-bottom: 8px; border: 1px solid #e9ecef; border-radius: 6px; overflow: hidden; }}
@@ -671,6 +756,13 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
 </div>
 
 <script>
+function toggleMonth(hdr) {{
+  const group = hdr.parentElement;
+  const arrow = hdr.querySelector('.month-arrow');
+  group.classList.toggle('collapsed');
+  arrow.innerHTML = group.classList.contains('collapsed') ? '&#9654;' : '&#9660;';
+}}
+
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const uploadList = document.getElementById('uploadList');

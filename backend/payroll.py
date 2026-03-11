@@ -104,8 +104,23 @@ async def _do_upload(request: Request, file: UploadFile):
         return JSONResponse(status_code=401, content={"success": False, "error": "Not logged in"})
     if not file.filename.lower().endswith(".xlsx"):
         return JSONResponse(status_code=400, content={"success": False, "error": "Only .xlsx files accepted"})
-    os.makedirs(portal.INPUT_DIR, exist_ok=True)
-    save_path = os.path.join(portal.INPUT_DIR, file.filename)
+    # Determine correct subfolder based on filename (PL→P&L Mon YY, BS→Bal-Sht Mon YY)
+    import process_reports
+    parsed = process_reports.parse_filename(file.filename)
+    if parsed:
+        ftype, company, month_num, year = parsed
+        _, month_name = process_reports.MONTH_ROWS[month_num]
+        short_month = month_name[:3].title()
+        yr_short = str(year)[2:]
+        if ftype == "PL":
+            subfolder = f"P&L {short_month} {yr_short}"
+        else:
+            subfolder = f"Bal-Sht {short_month} {yr_short}"
+        save_dir = os.path.join(portal.INPUT_DIR, subfolder)
+    else:
+        save_dir = portal.INPUT_DIR
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, file.filename)
     with open(save_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     return {"success": True, "file": file.filename}
@@ -154,6 +169,18 @@ async def api_input_files_alias(request: Request):
     return portal.get_all_input_files()
 
 
+@app.get("/download-aggregate")
+async def download_aggregate(request: Request):
+    """Download the Aggregate P&L Output.xlsx file."""
+    if not get_session_from_request(request):
+        raise HTTPException(status_code=401, detail="Not logged in")
+    import process_reports
+    agg_path = os.path.join(portal.SAP_DIR, process_reports.AGGREGATE_RELATIVE)
+    if not os.path.isfile(agg_path):
+        raise HTTPException(status_code=404, detail="Aggregate file not found")
+    return FileResponse(agg_path, filename="Aggregate P&L Output.xlsx",
+                        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 @app.get("/download-input/{filename}")
 async def download_input_file(request: Request, filename: str):
     """Download an input Excel file — searches SAP Reports/Input Files/ recursively."""
@@ -189,6 +216,136 @@ async def view_sap(request: Request, folder_name: str, file_name: str):
         media_type = "application/pdf" if file_name.lower().endswith(".pdf") else None
         return FileResponse(real_path, filename=os.path.basename(real_path), media_type=media_type, content_disposition_type="inline")
     raise HTTPException(status_code=404, detail="File not found")
+
+
+# ── Users API (reads/writes users.xlsx) ──────────────────────────────
+USERS_XLSX = os.path.join(portal.BASE_FOLDER, "users.xlsx")
+# Permission column mapping: column index in xlsx (1-based)
+PERM_COL_MAP = {
+    "sap_reports": 5,      # Column E
+    "payroll_reports": 6,   # Column F
+    "ob_accounts": 7,       # Column G
+    "ob_orders": 8,         # Column H
+    "ob_invoices": 9,       # Column I
+    "ob_reports": 10,       # Column J
+}
+
+def _read_user_row(row, idx):
+    """Parse a user row from xlsx into a dict."""
+    perms = {}
+    for key, col_idx in PERM_COL_MAP.items():
+        val = str(row[col_idx - 1]).strip() if len(row) >= col_idx and row[col_idx - 1] else "Edit"
+        perms[key] = val
+    return {
+        "row": idx, "username": str(row[0]), "password": str(row[1]),
+        "fullname": str(row[2]) if row[2] else "",
+        "role": str(row[3]) if row[3] else "User",
+        "permissions": perms,
+    }
+
+@app.get("/api/users")
+async def get_users(request: Request):
+    if not get_session_from_request(request):
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    wb = openpyxl.load_workbook(USERS_XLSX)
+    ws = wb.active
+    users = []
+    for idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if row[0] is not None:
+            users.append(_read_user_row(row, idx))
+    wb.close()
+    return users
+
+@app.get("/api/session")
+async def get_session_info(request: Request):
+    session = get_session_from_request(request)
+    if not session:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    return {
+        "username": session.get("username", ""),
+        "fullname": session.get("fullname", ""),
+        "role": session.get("role", "User"),
+        "permissions": session.get("permissions", {}),
+    }
+
+@app.post("/api/users")
+async def add_user(request: Request):
+    session = get_session_from_request(request)
+    if not session:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    if session.get("role") != "Admin":
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    body = await request.json()
+    username = body.get("username", "").strip()
+    password = body.get("password", "").strip()
+    fullname = body.get("fullname", "").strip()
+    role = body.get("role", "User").strip()
+    perms = body.get("permissions", {})
+    if not username or not password:
+        return JSONResponse(status_code=400, content={"error": "Username and Password are required"})
+    wb = openpyxl.load_workbook(USERS_XLSX)
+    ws = wb.active
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0] and str(row[0]).lower() == username.lower():
+            wb.close()
+            return JSONResponse(status_code=400, content={"error": f"Username '{username}' already exists"})
+    new_row = [username, password, fullname, role]
+    for key in ["sap_reports", "payroll_reports", "ob_accounts", "ob_orders", "ob_invoices", "ob_reports"]:
+        new_row.append(perms.get(key, "Edit"))
+    ws.append(new_row)
+    wb.save(USERS_XLSX)
+    wb.close()
+    portal.load_users()
+    return {"status": "ok"}
+
+@app.put("/api/users/{row_num}")
+async def update_user(request: Request, row_num: int):
+    session = get_session_from_request(request)
+    if not session:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    if session.get("role") != "Admin":
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    body = await request.json()
+    wb = openpyxl.load_workbook(USERS_XLSX)
+    ws = wb.active
+    if row_num < 2 or row_num > ws.max_row:
+        wb.close()
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+    if body.get("username"):
+        ws.cell(row=row_num, column=1, value=body["username"])
+    if body.get("password"):
+        ws.cell(row=row_num, column=2, value=body["password"])
+    if "fullname" in body:
+        ws.cell(row=row_num, column=3, value=body["fullname"])
+    if "role" in body:
+        ws.cell(row=row_num, column=4, value=body["role"])
+    # Update permissions
+    perms = body.get("permissions", {})
+    for key, col_idx in PERM_COL_MAP.items():
+        if key in perms:
+            ws.cell(row=row_num, column=col_idx, value=perms[key])
+    wb.save(USERS_XLSX)
+    wb.close()
+    portal.load_users()
+    return {"status": "ok"}
+
+@app.delete("/api/users/{row_num}")
+async def delete_user(request: Request, row_num: int):
+    session = get_session_from_request(request)
+    if not session:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    if session.get("role") != "Admin":
+        return JSONResponse(status_code=403, content={"error": "Admin access required"})
+    wb = openpyxl.load_workbook(USERS_XLSX)
+    ws = wb.active
+    if row_num < 2 or row_num > ws.max_row:
+        wb.close()
+        return JSONResponse(status_code=404, content={"error": "User not found"})
+    ws.delete_rows(row_num)
+    wb.save(USERS_XLSX)
+    wb.close()
+    portal.load_users()
+    return {"status": "ok"}
 
 
 def format_date_long(date_str):
