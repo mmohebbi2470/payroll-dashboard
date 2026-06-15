@@ -102,11 +102,14 @@ def load_users():
                 for i, key in enumerate(PERM_COLUMNS):
                     val = str(row[4 + i]).strip() if len(row) > 4 + i and row[4 + i] else "Edit"
                     perms[key] = val  # "Edit" or "Read"
+                # Column K (index 10) = company_access
+                company_access = str(row[10]).strip() if len(row) > 10 and row[10] else "all"
                 users[str(row[0]).strip().lower()] = {
                     "password": str(row[1]).strip(),
                     "fullname": str(row[2]).strip() if row[2] else str(row[0]).strip(),
                     "role": str(row[3]).strip() if len(row) > 3 and row[3] else "User",
                     "permissions": perms,
+                    "company_access": company_access,
                 }
         wb.close()
     except Exception as e:
@@ -129,6 +132,7 @@ def create_session(username, user_info):
         "fullname": user_info["fullname"],
         "role": user_info["role"],
         "permissions": user_info.get("permissions", {}),
+        "company_access": user_info.get("company_access", "all"),
         "expires": time.time() + SESSION_DURATION,
     }
     return sid
@@ -190,8 +194,14 @@ def _scan_input_files():
 
 
 def get_input_files_organized():
-    """Organize input files by month and type (PL/BS)."""
-    organized = {}
+    """Organize input files by month and type (PL/BS).
+    Returns: (known_organized, other_organized, unmatched)
+      - known_organized: dict of month→{PL:[], BS:[]} for known aggregate companies
+      - other_organized: dict of month→{PL:[], BS:[]} for other companies
+      - unmatched: list of filenames that couldn't be parsed at all
+    """
+    known = {}
+    other = {}
     unmatched = []
     for f in _scan_input_files():
         result = process_reports.parse_filename(f)
@@ -201,13 +211,19 @@ def get_input_files_organized():
             short_month = month_name[:3].title()
             yr_short = str(year)[2:]
             key = f"{short_month} {yr_short}"
-            if key not in organized:
-                organized[key] = {"PL": [], "BS": [], "sort_key": (year, month_num)}
-            organized[key][ftype].append(f)
+            target = known if process_reports.is_known_company(company) else other
+            if key not in target:
+                target[key] = {"PL": [], "BS": [], "sort_key": (year, month_num)}
+            target[key][ftype].append(f)
         else:
             unmatched.append(f)
-    sorted_months = sorted(organized.keys(), key=lambda k: organized[k]["sort_key"])
-    return {k: organized[k] for k in sorted_months}, unmatched
+    sorted_known = sorted(known.keys(), key=lambda k: known[k]["sort_key"])
+    sorted_other = sorted(other.keys(), key=lambda k: other[k]["sort_key"])
+    return (
+        {k: known[k] for k in sorted_known},
+        {k: other[k] for k in sorted_other},
+        unmatched
+    )
 
 
 def get_all_input_files():
@@ -267,7 +283,7 @@ def run_processing(force=False):
             month_folder = os.path.join(SAP_DIR, month_folder_name)
             os.makedirs(month_folder, exist_ok=True)
 
-            update_date = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%m/%d/%Y")
+            update_date = datetime.fromtimestamp(os.path.getmtime(filepath)).strftime("%m/%d/%Y %I:%M %p")
             pdf_name = f"{company} {short_month} {yr_short}.pdf"
             pdf_path = os.path.join(month_folder, pdf_name)
 
@@ -280,12 +296,16 @@ def run_processing(force=False):
                 process_reports.build_pdf(rows, company, period, update_date, pdf_path, report_type="PL")
                 logger.info(f"  ✓ PL PDF → {month_folder_name}/{pdf_name}")
 
-                metrics = process_reports.extract_metrics(filepath)
-                ok = process_reports.update_aggregate(agg_path, company, month_num, metrics, logger)
-                if ok:
-                    logger.info(f"  ✓ Aggregate updated — {company} / {period}")
+                # Only update Aggregate P&L for known companies
+                if process_reports.is_known_company(company):
+                    metrics = process_reports.extract_metrics(filepath)
+                    ok = process_reports.update_aggregate(agg_path, company, month_num, metrics, logger)
+                    if ok:
+                        logger.info(f"  ✓ Aggregate updated — {company} / {period}")
+                    else:
+                        raise RuntimeError("Aggregate update failed")
                 else:
-                    raise RuntimeError("Aggregate update failed")
+                    logger.info(f"  ⊘ Aggregate skipped (other company) — {company}")
 
             tracker[fname] = fp
             results["processed"].append(fname)
@@ -306,6 +326,74 @@ def run_processing(force=False):
 # ═══════════════════════════════════════════════════════════════════════════════
 #  HTML TEMPLATES
 # ═══════════════════════════════════════════════════════════════════════════════
+
+def _change_password_modal_html():
+    """Returns the HTML + CSS + JS for the Change Password modal, to embed in any page."""
+    return """
+<!-- Change Password Modal -->
+<div id="cpModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+     background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:white; border-radius:12px; padding:28px; width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <h3 style="color:#0f3460; margin-bottom:16px; font-size:18px;">Change Password</h3>
+    <div id="cpError" style="display:none; background:#ffe0e0; color:#c00; padding:10px; border-radius:6px; margin-bottom:12px; font-size:13px;"></div>
+    <div id="cpSuccess" style="display:none; background:#d4edda; color:#155724; padding:10px; border-radius:6px; margin-bottom:12px; font-size:13px;"></div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Current Password</label>
+      <input type="password" id="cpCurrent" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">New Password</label>
+      <input type="password" id="cpNew" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">
+    </div>
+    <div style="margin-bottom:18px;">
+      <label style="display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;">Confirm New Password</label>
+      <input type="password" id="cpConfirm" style="width:100%; padding:8px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">
+    </div>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button onclick="closeCpModal()" style="padding:8px 16px; border:1px solid #d1d5db; border-radius:6px; background:white; cursor:pointer; font-size:13px;">Cancel</button>
+      <button onclick="submitChangePassword()" style="padding:8px 16px; border:none; border-radius:6px; background:#0f3460; color:white; cursor:pointer; font-size:13px; font-weight:600;">Change Password</button>
+    </div>
+  </div>
+</div>
+<script>
+function openCpModal() {
+  document.getElementById('cpCurrent').value = '';
+  document.getElementById('cpNew').value = '';
+  document.getElementById('cpConfirm').value = '';
+  document.getElementById('cpError').style.display = 'none';
+  document.getElementById('cpSuccess').style.display = 'none';
+  document.getElementById('cpModal').style.display = 'flex';
+}
+function closeCpModal() {
+  document.getElementById('cpModal').style.display = 'none';
+}
+async function submitChangePassword() {
+  var errEl = document.getElementById('cpError');
+  var succEl = document.getElementById('cpSuccess');
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+  var cur = document.getElementById('cpCurrent').value;
+  var newP = document.getElementById('cpNew').value;
+  var conf = document.getElementById('cpConfirm').value;
+  if (!cur || !newP || !conf) { errEl.textContent = 'All fields are required'; errEl.style.display = 'block'; return; }
+  if (newP !== conf) { errEl.textContent = 'New passwords do not match'; errEl.style.display = 'block'; return; }
+  if (newP.length < 4) { errEl.textContent = 'New password must be at least 4 characters'; errEl.style.display = 'block'; return; }
+  try {
+    var resp = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ current_password: cur, new_password: newP, confirm_password: conf })
+    });
+    var data = await resp.json();
+    if (!resp.ok) { errEl.textContent = data.error || 'Failed to change password'; errEl.style.display = 'block'; return; }
+    succEl.textContent = 'Password changed successfully!';
+    succEl.style.display = 'block';
+    setTimeout(function() { closeCpModal(); }, 1500);
+  } catch(e) { errEl.textContent = 'Network error'; errEl.style.display = 'block'; }
+}
+</script>
+"""
+
 
 def login_page(error=""):
     error_html = f'<div class="error">{error}</div>' if error else ""
@@ -364,24 +452,53 @@ button:hover {{ background: #1a4a8a; }}
 
 def main_page(session):
     pl_folders, bs_folders = get_output_folders()
-    organized_inputs, unmatched = get_input_files_organized()
+    organized_inputs, other_inputs, unmatched = get_input_files_organized()
     all_inputs = get_all_input_files()
 
     # ── Build COMBINED aligned dashboard (interleaved by month: P&L then BS) ─
     # Map output folders by month key: "Jan 26", "Feb 26", etc.
+    # Separate output PDFs into known vs other companies
     pl_output_map = {}
+    pl_other_output_map = {}
     for folder in pl_folders:
         key = folder["name"][4:] if folder["name"].startswith("P&L ") else folder["name"]
-        pl_output_map[key] = folder
+        # Split PDFs: known companies vs other companies
+        known_pdfs = []
+        other_pdfs = []
+        for pdf in folder["files"]:
+            # PDF name format: "COMPANY Mon YY.pdf"
+            company_part = pdf.rsplit(" ", 2)[0] if len(pdf.rsplit(" ", 2)) == 3 else pdf
+            if process_reports.is_known_company(company_part):
+                known_pdfs.append(pdf)
+            else:
+                other_pdfs.append(pdf)
+        if known_pdfs:
+            pl_output_map[key] = {"name": folder["name"], "files": known_pdfs}
+        if other_pdfs:
+            pl_other_output_map[key] = {"name": folder["name"], "files": other_pdfs}
 
     bs_output_map = {}
+    bs_other_output_map = {}
     for folder in bs_folders:
         key = folder["name"][8:] if folder["name"].startswith("Bal-Sht ") else folder["name"]
-        bs_output_map[key] = folder
+        known_pdfs = []
+        other_pdfs = []
+        for pdf in folder["files"]:
+            company_part = pdf.rsplit(" ", 2)[0] if len(pdf.rsplit(" ", 2)) == 3 else pdf
+            if process_reports.is_known_company(company_part):
+                known_pdfs.append(pdf)
+            else:
+                other_pdfs.append(pdf)
+        if known_pdfs:
+            bs_output_map[key] = {"name": folder["name"], "files": known_pdfs}
+        if other_pdfs:
+            bs_other_output_map[key] = {"name": folder["name"], "files": other_pdfs}
 
     def _month_sort_key(k):
         if k in organized_inputs:
             return organized_inputs[k]["sort_key"]
+        if k in other_inputs:
+            return other_inputs[k]["sort_key"]
         parts = k.split()
         if len(parts) == 2:
             m = process_reports.MONTH_ABBREVS.get(parts[0].upper(), 99)
@@ -391,6 +508,12 @@ def main_page(session):
 
     all_month_keys = sorted(
         set(list(pl_output_map.keys()) + list(bs_output_map.keys()) + list(organized_inputs.keys())),
+        key=_month_sort_key
+    )
+
+    # Month keys for "Other Companies" section
+    all_other_month_keys = sorted(
+        set(list(pl_other_output_map.keys()) + list(bs_other_output_map.keys()) + list(other_inputs.keys())),
         key=_month_sort_key
     )
 
@@ -428,6 +551,8 @@ def main_page(session):
                 return os.path.join(root, filename)
         return None
 
+    is_admin = session.get("role") == "Admin"
+
     def _in_rows(file_list):
         if not file_list:
             return '<div class="align-empty">—</div>'
@@ -437,14 +562,26 @@ def main_page(session):
             full_path = _find_input_file(f)
             mod_time = _file_mod_time(full_path) if full_path else ""
             time_html = f'<span style="color:#888;font-size:10px;margin-left:6px;">({mod_time})</span>' if mod_time else ''
-            html += (f'<div class="align-cell">'
+            del_btn = (f'<button class="btn btn-del" onclick="deleteInputFile(\'{enc}\')" '
+                       f'title="Delete this file">✕</button>') if is_admin else ''
+            html += (f'<div class="align-cell" id="cell-{enc}">'
                      f'<span class="af-name" title="{f}">📗 {f}{time_html}</span>'
                      f'<span class="af-actions">'
+                     f'{del_btn}'
                      f'<a href="/download-input/{enc}" class="btn btn-dl">Download</a>'
                      f'</span></div>')
         return html
 
     combined_html = ""
+
+    # ── "Operating Companies" section title ──
+    if all_month_keys:
+        combined_html += (
+            f'<div class="align-section">'
+            f'<div class="align-hdr" style="background:#1a1a2e;color:white;border-bottom:2px solid #0f3460;font-size:15px;font-weight:700;padding:10px 14px;">'
+            f'🏭 Operating Companies</div></div>'
+        )
+
     for idx, month_key in enumerate(all_month_keys):
         # Collect P&L and BS content for this month
         month_inner = ""
@@ -486,14 +623,11 @@ def main_page(session):
         if month_inner:
             total_out = pl_cnt_o + bs_cnt_o
             total_in  = pl_cnt_i + bs_cnt_i
-            # Most recent month (last in sorted list) is expanded by default
-            is_latest = (idx == len(all_month_keys) - 1)
-            collapsed_cls = "" if is_latest else " collapsed"
-            arrow = "&#9660;" if is_latest else "&#9654;"
+            # All months default to collapsed
             combined_html += (
-                f'<div class="month-group{collapsed_cls}">'
+                f'<div class="month-group collapsed">'
                 f'<div class="month-hdr" onclick="toggleMonth(this)">'
-                f'<span class="month-arrow">{arrow}</span>'
+                f'<span class="month-arrow">&#9654;</span>'
                 f'<span class="month-title">{month_key}</span>'
                 f'<span class="month-summary">P&amp;L: {pl_cnt_o} out / {pl_cnt_i} in &nbsp; | &nbsp; '
                 f'Bal-Sht: {bs_cnt_o} out / {bs_cnt_i} in</span>'
@@ -502,11 +636,77 @@ def main_page(session):
                 f'</div>'
             )
 
+    # ── "Other Companies" section — organized by month, same layout ──
+    if all_other_month_keys:
+        other_inner_html = ""
+        for idx2, month_key in enumerate(all_other_month_keys):
+            oc_month_inner = ""
+
+            # Other P&L
+            oc_pl_out = pl_other_output_map.get(month_key)
+            oc_pl_in  = other_inputs.get(month_key, {}).get("PL", [])
+            oc_pl_cnt_o = len(oc_pl_out["files"]) if oc_pl_out else 0
+            oc_pl_cnt_i = len(oc_pl_in)
+            if oc_pl_out or oc_pl_in:
+                fn = oc_pl_out["name"] if oc_pl_out else ""
+                oc_month_inner += (
+                    f'<div class="align-section">'
+                    f'<div class="align-hdr pl-hdr">📊 P&amp;L {month_key}'
+                    f'<span class="ah-badge">Out: {oc_pl_cnt_o} | In: {oc_pl_cnt_i}</span></div>'
+                    f'<div class="align-body">'
+                    f'<div class="align-col">{_out_rows(oc_pl_out, fn)}</div>'
+                    f'<div class="align-col align-col-r">{_in_rows(oc_pl_in)}</div>'
+                    f'</div></div>'
+                )
+
+            # Other BS
+            oc_bs_out = bs_other_output_map.get(month_key)
+            oc_bs_in  = other_inputs.get(month_key, {}).get("BS", [])
+            oc_bs_cnt_o = len(oc_bs_out["files"]) if oc_bs_out else 0
+            oc_bs_cnt_i = len(oc_bs_in)
+            if oc_bs_out or oc_bs_in:
+                fn = oc_bs_out["name"] if oc_bs_out else ""
+                oc_month_inner += (
+                    f'<div class="align-section">'
+                    f'<div class="align-hdr bs-hdr">📋 Bal-Sht {month_key}'
+                    f'<span class="ah-badge">Out: {oc_bs_cnt_o} | In: {oc_bs_cnt_i}</span></div>'
+                    f'<div class="align-body">'
+                    f'<div class="align-col">{_out_rows(oc_bs_out, fn)}</div>'
+                    f'<div class="align-col align-col-r">{_in_rows(oc_bs_in)}</div>'
+                    f'</div></div>'
+                )
+
+            if oc_month_inner:
+                oc_total_out = oc_pl_cnt_o + oc_bs_cnt_o
+                oc_total_in  = oc_pl_cnt_i + oc_bs_cnt_i
+                # All months default to collapsed
+                other_inner_html += (
+                    f'<div class="month-group collapsed">'
+                    f'<div class="month-hdr" onclick="toggleMonth(this)">'
+                    f'<span class="month-arrow">&#9654;</span>'
+                    f'<span class="month-title">{month_key}</span>'
+                    f'<span class="month-summary">P&amp;L: {oc_pl_cnt_o} out / {oc_pl_cnt_i} in &nbsp; | &nbsp; '
+                    f'Bal-Sht: {oc_bs_cnt_o} out / {oc_bs_cnt_i} in</span>'
+                    f'</div>'
+                    f'<div class="month-content">{oc_month_inner}</div>'
+                    f'</div>'
+                )
+
+        if other_inner_html:
+            combined_html += (
+                f'<div class="align-section" style="margin-top:16px;">'
+                f'<div class="align-hdr" style="background:#e8f4fd;color:#1565c0;border-bottom:2px solid #90caf9;font-size:15px;font-weight:700;padding:10px 14px;">'
+                f'🏢 Other Companies</div>'
+                f'<div style="padding:4px 8px;">{other_inner_html}</div>'
+                f'</div>'
+            )
+
+    # Show truly unmatched files (bad format / typos) if any
     if unmatched:
         combined_html += (
             f'<div class="align-section">'
             f'<div class="align-hdr" style="background:#fff3cd;color:#856404;border-bottom:1px solid #ffe69c;">'
-            f'📎 Other Files<span class="ah-badge">{len(unmatched)}</span></div>'
+            f'⚠ Unrecognized Files<span class="ah-badge">{len(unmatched)}</span></div>'
             f'<div class="align-body">'
             f'<div class="align-col"><div class="align-empty">—</div></div>'
             f'<div class="align-col align-col-r">{_in_rows(unmatched)}</div>'
@@ -619,6 +819,9 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
                 border-top: 1px solid #f0f0f0; }}
 .btn-dl {{ background: #28a745; color: white; }}
 .btn-dl:hover {{ background: #218838; }}
+.btn-del {{ background: #dc3545; color: white; font-size: 11px; padding: 2px 7px;
+            border: none; border-radius: 4px; cursor: pointer; font-weight: 700; }}
+.btn-del:hover {{ background: #b02a37; }}
 
 /* Drop Zone */
 .drop-zone {{ border: 2px dashed #ccc; border-radius: 10px; padding: 24px; text-align: center;
@@ -701,12 +904,16 @@ body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background
   <h1>AntiGravity SAP Portal</h1>
   <div class="header-right">
     <a href="/" class="logout-btn" style="background:rgba(255,255,255,0.4);font-weight:600;">SAP Reports</a>
-    <a href="/payroll" class="logout-btn" style="background:rgba(255,255,255,0.2);">Payroll</a>
+    {"" if session.get("permissions", {}).get("payroll_reports") == "Hidden" else '<a href="/payroll" class="logout-btn" style="background:rgba(255,255,255,0.2);">Payroll</a>'}
     <a href="/orders" class="logout-btn" style="background:rgba(255,255,255,0.2);">Orders Backlog</a>
+    {'<a href="/admin" class="logout-btn" style="background:rgba(240,230,211,0.9);color:#8b6914;">Admin</a>' if session.get("role") == "Admin" else ""}
     <span class="user-info">Welcome, {session["fullname"]}</span>
+    <a href="javascript:void(0)" onclick="openCpModal()" class="logout-btn" style="background:rgba(255,255,255,0.15);font-size:12px;">Change Password</a>
     <a href="/logout" class="logout-btn">Sign Out</a>
   </div>
 </div>
+
+{_change_password_modal_html()}
 
 <!-- Top Section: Upload + Process -->
 <div class="top-section">
@@ -761,6 +968,31 @@ function toggleMonth(hdr) {{
   const arrow = hdr.querySelector('.month-arrow');
   group.classList.toggle('collapsed');
   arrow.innerHTML = group.classList.contains('collapsed') ? '&#9654;' : '&#9660;';
+}}
+
+function deleteInputFile(encodedName) {{
+  const displayName = decodeURIComponent(encodedName);
+  if (!confirm('Delete input file "' + displayName + '"?\\n\\nThis cannot be undone.')) return;
+  fetch('/delete-input/' + encodedName, {{ method: 'DELETE' }})
+    .then(r => {{
+      if (!r.ok) throw new Error('Server returned ' + r.status);
+      return r.json();
+    }})
+    .then(data => {{
+      if (data.success) {{
+        const cell = document.getElementById('cell-' + encodedName);
+        if (cell) {{
+          cell.style.transition = 'opacity 0.3s';
+          cell.style.opacity = '0';
+          setTimeout(() => cell.remove(), 300);
+        }}
+        // Reload page to confirm file is gone from disk
+        setTimeout(() => location.reload(), 800);
+      }} else {{
+        alert('Delete failed: ' + (data.detail || 'Unknown error'));
+      }}
+    }})
+    .catch(err => alert('Delete failed: ' + err));
 }}
 
 const dropZone = document.getElementById('dropZone');
@@ -834,15 +1066,18 @@ function processFiles(force) {{
     .then(data => {{
       log.textContent = data.log || 'Done.';
       result.style.display = 'block';
-      if (data.errors && data.errors.length > 0) {{
+      var nProc = (data.processed || []).length;
+      var nSkip = (data.skipped || []).length;
+      var nErr  = (data.errors || []).length;
+      if (nErr > 0) {{
         result.className = 'error';
-        result.textContent = 'Processed: ' + data.processed.length +
-          ' | Skipped: ' + data.skipped.length +
-          ' | Errors: ' + data.errors.length;
+        result.textContent = 'Processed: ' + nProc +
+          ' | Skipped: ' + nSkip +
+          ' | Errors: ' + nErr;
       }} else {{
         result.className = 'success';
-        result.textContent = 'Processed: ' + data.processed.length +
-          ' | Skipped (unchanged): ' + data.skipped.length + ' | No errors';
+        result.textContent = 'Processed: ' + nProc +
+          ' | Skipped (unchanged): ' + nSkip + ' | No errors';
       }}
       btns.forEach(b => b.disabled = false);
       setTimeout(() => location.reload(), 2000);
@@ -963,6 +1198,7 @@ def payroll_page(session):
     <a href="/payroll" class="nav-btn active">Payroll</a>
     <a href="http://localhost:8001" target="_blank" class="nav-btn">Orders Backlog</a>
     <span class="user-info">Welcome, {session["fullname"]}</span>
+    <a href="javascript:void(0)" onclick="openCpModal()" class="nav-btn" style="font-size:12px;padding:5px 12px;">Change Password</a>
     <a href="/logout" class="logout-btn">Sign Out</a>
   </div>
 </div>
@@ -1014,21 +1250,32 @@ async function runScript(filename, btn) {{
   btn.textContent = '▶ Run Script';
 }}
 </script>
+{_change_password_modal_html()}
 </body>
 </html>"""
 
 
 def _tab_wrapper_page(session, active_tab, iframe_src, title):
     """Shared wrapper: portal nav header + full-height iframe for a tab."""
-    tabs = [
-        ("SAP Reports",    "/",        "sap"),
-        ("Payroll",        "/payroll", "payroll"),
-        ("Orders Backlog", "/orders",  "orders"),
-    ]
+    perms = session.get("permissions", {})
+    tabs = []
+    # Only show SAP Reports if not Hidden
+    if perms.get("sap_reports") != "Hidden":
+        tabs.append(("SAP Reports", "/", "sap"))
+    # Only show Payroll if not Hidden
+    if perms.get("payroll_reports") != "Hidden":
+        tabs.append(("Payroll", "/payroll", "payroll"))
+    # Orders Backlog — always shown (sub-tabs hidden inside the app)
+    tabs.append(("Orders Backlog", "/orders", "orders"))
+    # Admin tab — only show for Admin role users
+    if session.get("role") == "Admin":
+        tabs.append(("Admin", "/admin", "admin"))
     nav_links = ""
     for label, href, key in tabs:
         active_style = "background:rgba(255,255,255,0.4);font-weight:600;" if key == active_tab else "background:rgba(255,255,255,0.2);"
-        nav_links += f'<a href="{href}" style="{active_style}color:white;padding:7px 16px;border-radius:6px;text-decoration:none;font-size:0.88rem;">{label}</a>\n    '
+        if key == "admin":
+            active_style = (active_style + "background:#f0e6d3;color:#8b6914;") if key == active_tab else "background:rgba(240,230,211,0.9);color:#8b6914;"
+        nav_links += f'<a href="{href}" style="{active_style}{"color:white;" if key != "admin" else ""}padding:7px 16px;border-radius:6px;text-decoration:none;font-size:0.88rem;">{label}</a>\n    '
 
     return f"""<!DOCTYPE html>
 <html>
@@ -1058,9 +1305,11 @@ def _tab_wrapper_page(session, active_tab, iframe_src, title):
     <div class="nav">
       {nav_links}
       <span class="user-info">Welcome, {session["fullname"]}</span>
+      <a href="javascript:void(0)" onclick="openCpModal()" style="background:rgba(255,255,255,0.15);color:white;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:0.78rem;cursor:pointer;">Change Password</a>
       <a href="/logout" class="sign-out">Sign Out</a>
     </div>
   </div>
+  {_change_password_modal_html()}
   <iframe src="{iframe_src}" allowfullscreen></iframe>
 </body>
 </html>"""
@@ -1069,6 +1318,11 @@ def _tab_wrapper_page(session, active_tab, iframe_src, title):
 def payroll_tab_page(session):
     """Returns the Payroll tab — iframe loads the drag-and-drop payroll dashboard."""
     return _tab_wrapper_page(session, "payroll", "/payroll-app/", "Payroll")
+
+
+def admin_tab_page(session):
+    """Returns the Admin tab — iframe loads the orders app with admin tab auto-opened."""
+    return _tab_wrapper_page(session, "admin", "/orders-app/?tab=admin", "Admin")
 
 
 def orders_tab_page(session):

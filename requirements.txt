@@ -6,3 +6,6 @@ pdfplumber
 uvicorn
 reportlab
 numpy
+sqlalchemy
+psycopg2-binary
+python-multipart

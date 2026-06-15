@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Orders Backlog</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f0f2f5; }
   .tab-btn { padding: 8px 20px; border: none; cursor: pointer; font-size: 14px; font-weight: 600;
@@ -45,10 +46,27 @@
   .badge-amber { background: #fef3c7; color: #92400e; }
   .section-title { font-size: 16px; font-weight: 700; color: #0f3460; margin-bottom: 12px;
                    padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+  .ord-tab { padding:6px 16px; border:none; cursor:pointer; font-size:13px; font-weight:600;
+             background:transparent; color:#64748b; border-bottom:2px solid transparent; transition:all 0.2s; }
+  .ord-tab.active { color:#0f3460; border-bottom:2px solid #0f3460; }
+  .ord-tab:hover:not(.active) { color:#334155; background:#f1f5f9; }
+  .ord-panel { min-height:200px; }
   .stat-card { background: linear-gradient(135deg, #0f3460, #1a4a8a); color: white; border-radius: 10px;
-               padding: 16px 20px; }
-  .stat-card h3 { font-size: 12px; opacity: 0.8; margin-bottom: 4px; }
-  .stat-card p { font-size: 24px; font-weight: 700; }
+               padding: 12px 14px; text-align: center; transition: transform 0.15s, box-shadow 0.15s; }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,52,96,0.4); }
+  .stat-card.dd-active { outline: 3px solid #fbbf24; transform: translateY(-2px); }
+  .stat-card h3 { font-size: 11px; opacity: 0.8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-card p { font-size: 20px; font-weight: 700; }
+  .rpt-menu-btn:hover { background: #f1f5f9 !important; }
+  .rpt-menu-active { background: #eff6ff !important; border-left-color: #0f3460 !important; color: #0f3460 !important; font-weight: 700 !important; }
+  .rpt-month-table { border-collapse: collapse; font-size: 12px; width: 100%; }
+  .rpt-month-table th, .rpt-month-table td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: right; }
+  .rpt-month-table th { background: #f1f5f9; font-weight: 600; color: #475569; text-align: center; }
+  .rpt-month-table td:first-child, .rpt-month-table th:first-child { text-align: left; }
+  .rpt-month-table tr:hover { background: #f8fafc; }
+  .rpt-month-table .rpt-total-row td { background: #0f3460; color: white; font-weight: 700; }
+  .rpt-month-table .rpt-client-row td { background: #eff6ff; font-weight: 600; color: #1e40af; }
+  .rpt-month-table .rpt-sub-header th { background: #dbeafe; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -56,19 +74,38 @@
 <div style="padding: 16px 24px;">
 
   <!-- Top Stats Row -->
-  <div id="statsRow" class="grid grid-cols-5 gap-4 mb-4">
-    <div class="stat-card"><h3>Total Clients</h3><p id="statClients">0</p></div>
-    <div class="stat-card"><h3>Total Orders</h3><p id="statOrders">0</p></div>
-    <div class="stat-card"><h3>Total Contract Value</h3><p id="statValue">$0</p></div>
-    <div class="stat-card"><h3>Pending Milestones</h3><p id="statMilestones">0</p></div>
-    <div class="stat-card"><h3>Open Invoices</h3><p id="statInvoices">0</p></div>
+  <div id="statsRow" style="display:grid; grid-template-columns:repeat(8, 1fr); gap:10px; margin-bottom:16px;">
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('clients_orders', this)"><h3>Clients, Orders</h3><p id="statClientsOrders">0, 0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('orders_value', this)"><h3>Total Orders Value</h3><p id="statValue">$0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('mls_to_invoice', this)"><h3>MLS to Invoice<br><small style="opacity:0.7;">(Next 30 Days)</small></h3><p id="statMilestones">0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('total_invoiced', this)"><h3 id="invoicedLabel">Total Invoiced</h3><p id="statInvoicedYear">$0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('backlog_year', this)"><h3 id="backlogLabel">Backlog 2026</h3><p id="statBacklog">$0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('backlog_after', this)"><h3 id="backlogAfterLabel">Bklg after 2026</h3><p id="statBacklogAfter">$0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('open_invoices', this)"><h3>Open Invoices</h3><p id="statInvoices">0</p></div>
+    <div class="stat-card" style="cursor:pointer;" onclick="openDrilldown('accounts_receivable', this)"><h3>Accounts Receivable</h3><p id="statBalance">$0</p></div>
+  </div>
+
+  <!-- Drill-down Area (hidden by default) -->
+  <div id="drilldownArea" style="display:none; margin-bottom:16px; background:white; border:2px solid #0f3460; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); overflow:hidden;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:linear-gradient(135deg,#0f3460,#1a4a8a); color:white;">
+      <h4 id="drilldownTitle" style="margin:0; font-size:15px; font-weight:700;">Drill-Down</h4>
+      <div style="display:flex; gap:8px;">
+        <button style="background:#22c55e; color:white; border:none; border-radius:6px; padding:5px 14px; font-size:12px; font-weight:600; cursor:pointer;" onclick="exportDrilldown()">Export Excel</button>
+        <button style="background:rgba(255,255,255,0.2); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:5px 14px; font-size:12px; font-weight:600; cursor:pointer;" onclick="closeDrilldown()">Close</button>
+      </div>
+    </div>
+    <div id="drilldownContent" style="padding:12px 16px; max-height:400px; overflow-y:auto;">
+      <p style="color:#94a3b8; text-align:center; padding:20px;">Loading...</p>
+    </div>
+    <div id="drilldownFooter" style="padding:10px 16px; background:#f8fafc; border-top:1px solid #e2e8f0; font-size:14px; font-weight:700; color:#0f3460;"></div>
   </div>
 
   <!-- Tab Navigation -->
   <div style="display: flex; gap: 4px; margin-bottom: 0;">
-    <button class="tab-btn active" onclick="showTab('accounts', this)">Accounts</button>
+    <button class="tab-btn active" onclick="showTab('accounts', this)">Clients</button>
     <button class="tab-btn" onclick="showTab('orders', this)">Orders</button>
-    <button class="tab-btn" onclick="showTab('invoices', this)">Invoices & Receipts</button>
+    <button class="tab-btn" onclick="showTab('invoices', this)">Invoices</button>
+    <button class="tab-btn" onclick="showTab('receipts', this)">Receipts</button>
     <button class="tab-btn" onclick="showTab('reports', this)">Reports</button>
     <button id="adminTabBtn" class="tab-btn" onclick="showTab('admin', this)" style="margin-left:auto; background:#f0e6d3; color:#8b6914;">Admin</button>
   </div>
@@ -78,11 +115,16 @@
   <!-- ═══════════════════════════════════════ -->
   <div id="panel-accounts" class="panel active">
     <div class="flex justify-between items-center mb-3">
-      <h3 class="section-title" style="margin:0;border:none;padding:0;">Clients / Accounts</h3>
+      <h3 class="section-title" style="margin:0;border:none;padding:0;">Clients</h3>
       <button class="btn btn-primary" onclick="openClientModal()">+ Add Client</button>
     </div>
     <table class="data-table" id="clientsTable"><thead><tr>
-      <th>Client ID</th><th>Name</th><th>Billing Address</th><th>Contact</th><th>Billing Name</th><th>Email</th><th></th>
+      <th>Client ID</th>
+      <th style="cursor:pointer;" onclick="sortClients('name')">Name <span id="sortNameArrow">▲</span></th>
+      <th style="cursor:pointer;" onclick="sortClients('client_business')">Business <span id="sortBusinessArrow"></span></th>
+      <th>Address</th>
+      <th style="cursor:pointer;" onclick="sortClients('contact_names')">Contact <span id="sortContactArrow"></span></th>
+      <th>Email</th><th>Phone</th><th></th>
     </tr></thead><tbody></tbody></table>
   </div>
 
@@ -92,22 +134,109 @@
   <div id="panel-orders" class="panel">
     <div class="flex justify-between items-center mb-4">
       <h3 class="section-title" style="margin:0;border:none;padding:0;">Orders / Contracts</h3>
-      <button class="btn btn-primary" onclick="openOrderModal()">+ New Order</button>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" style="background:#16a34a; color:white;" onclick="exportOrdersToExcel()">Export Excel</button>
+        <button class="btn btn-primary" onclick="openOrderModal()">+ New Order</button>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:10px; font-size:13px;">
+      <span style="font-weight:600; color:#475569;">Subtotal by:</span>
+      <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input type="radio" name="orderSubtotal" value="client" onchange="loadOrders()"> Client
+      </label>
+      <label style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input type="radio" name="orderSubtotal" value="category" onchange="loadOrders()"> Category
+      </label>
+      <button style="font-size:11px; padding:2px 8px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc; cursor:pointer; color:#64748b;" onclick="document.querySelectorAll('input[name=orderSubtotal]').forEach(r=>r.checked=false); loadOrders();">Clear</button>
     </div>
     <table class="data-table" id="ordersTable"><thead><tr>
-      <th>Order Name</th><th>Client</th><th>Type</th><th>Company</th><th>Date</th>
-      <th>Contract Amt</th><th>PO#</th><th></th>
+      <th>Client</th><th>Category</th><th>Order Name</th><th>Company</th><th>Date</th>
+      <th>Contract Amt</th><th id="remainMlsHeader">Remaining MLS 2026</th><th>PO#</th><th></th>
     </tr></thead><tbody></tbody></table>
   </div>
 
   <!-- ═══════════════════════════════════════ -->
-  <!--  INVOICES & RECEIPTS PANEL             -->
+  <!--  INVOICE PROCESSING PANEL              -->
   <!-- ═══════════════════════════════════════ -->
   <div id="panel-invoices" class="panel">
-    <h3 class="section-title">Invoices</h3>
+    <h3 class="section-title">Invoice Processing</h3>
+
+    <!-- Easy Way: Milestones ready to invoice -->
+    <div style="margin-bottom:20px;">
+      <h4 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px;">Milestones Ready to Invoice</h4>
+      <p style="font-size:12px; color:#64748b; margin-bottom:8px;">Past due, due this week, or due next week — click a row to create an invoice</p>
+      <div style="max-height:250px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px;">
+        <table class="data-table" id="milestonesToInvoiceTable"><thead><tr>
+          <th>Status</th><th>Client</th><th>Order</th><th>Milestone</th><th>Due Date</th><th>Type</th><th>Amount</th><th></th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <!-- Backup Method: Manual selection -->
+    <div style="margin-bottom:20px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+      <a href="#" id="manualInvToggle" onclick="event.preventDefault(); var sec=document.getElementById('manualInvSection'); var show=sec.style.display==='none'; sec.style.display=show?'block':'none'; this.textContent=show?'▾ Hide Manual Selection':'▸ Manual Selection (select Client → Order → Milestone)';" style="color:#2563eb; font-size:13px; font-weight:600; text-decoration:none;">▸ Manual Selection (select Client → Order → Milestone)</a>
+      <div id="manualInvSection" style="display:none; margin-top:10px;">
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="form-label">Client</label>
+            <select class="form-input" id="fInvClient" onchange="loadOrdersForInvClient()"><option value="">-- Select Client --</option></select></div>
+          <div><label class="form-label">Order</label>
+            <select class="form-input" id="fInvOrderManual" onchange="loadMilestonesForInvOrder()"><option value="">-- Select Order --</option></select></div>
+          <div><label class="form-label">Milestone (unbilled)</label>
+            <select class="form-input" id="fInvMsManual" onchange="selectManualMilestone()"><option value="">-- Select Milestone --</option></select></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Form (shown after selecting a milestone) -->
+    <div id="invoiceFormSection" style="display:none; padding:16px; background:#fffbeb; border:1px solid #fbbf24; border-radius:8px; margin-bottom:16px;">
+      <h4 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:10px;" id="invFormTitle">Create Invoice</h4>
+      <input type="hidden" id="fInvMilestoneId">
+      <input type="hidden" id="fInvOrderId">
+      <div class="grid gap-3 mb-3" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 1fr;">
+        <div><label class="form-label">Invoice Number *</label>
+          <input class="form-input" id="fInvNumber"></div>
+        <div><label class="form-label">Invoice Amount ($) *</label>
+          <input class="form-input" type="number" step="0.01" id="fInvAmount"></div>
+        <div><label class="form-label">Invoice Date *</label>
+          <input class="form-input" type="date" id="fInvDate" onchange="updateDueDate()"></div>
+        <div><label class="form-label">Payment Due Date</label>
+          <input class="form-input" type="date" id="fInvDueDate"></div>
+        <div><label class="form-label">Invoiced By</label>
+          <input class="form-input" id="fInvBy"></div>
+        <div><label class="form-label">Invoice PDF</label>
+          <input type="file" id="fInvPdfFile" accept=".pdf" class="form-input" style="padding:4px; font-size:11px;"></div>
+      </div>
+      <div style="font-size:12px; color:#64748b; margin-bottom:10px;" id="invMilestoneInfo"></div>
+      <div class="flex justify-end gap-2">
+        <button class="btn" style="background:#e2e8f0;" onclick="cancelInvoiceForm()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveInvoice()">Create Invoice</button>
+      </div>
+    </div>
+
+    <!-- Existing Invoices List -->
+    <h4 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px; margin-top:20px;">All Invoices</h4>
     <table class="data-table" id="invoicesTable"><thead><tr>
-      <th>Invoice #</th><th>Order</th><th>Milestone</th><th>Date</th>
+      <th>Invoice #</th><th>Client</th><th>Order</th><th>Milestone</th><th>Date</th><th>Due Date</th>
+      <th>Amount</th><th>Received</th><th>Balance</th><th>Status</th><th>Invoiced By</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--  RECEIPTS PANEL                        -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="panel-receipts" class="panel">
+    <h3 class="section-title">Payment Receipts</h3>
+
+    <!-- Unpaid invoices for quick receipt posting -->
+    <h4 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px;">Outstanding Invoices</h4>
+    <table class="data-table" id="unpaidInvoicesTable"><thead><tr>
+      <th>Invoice #</th><th>Client</th><th>Order</th><th>Date</th><th>Due Date</th>
       <th>Amount</th><th>Received</th><th>Balance</th><th></th>
+    </tr></thead><tbody></tbody></table>
+
+    <h4 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px; margin-top:24px;">Recent Receipts</h4>
+    <table class="data-table" id="allReceiptsTable"><thead><tr>
+      <th>Invoice #</th><th>Receipt Date</th><th>Invoice Amt</th><th>Receipt Amt</th><th>Difference</th><th>Status</th><th>Notes</th>
     </tr></thead><tbody></tbody></table>
   </div>
 
@@ -115,32 +244,133 @@
   <!--  REPORTS PANEL                         -->
   <!-- ═══════════════════════════════════════ -->
   <div id="panel-reports" class="panel">
-    <div class="grid grid-cols-2 gap-6">
-      <div>
-        <h3 class="section-title">Total Backlog Report</h3>
-        <div class="flex gap-3 items-end mb-4">
-          <div>
-            <label class="form-label">Start Month</label>
-            <input type="month" id="backlogMonth" class="form-input" style="width:200px;">
-          </div>
-          <button class="btn btn-primary" onclick="runBacklogReport()">Generate</button>
+    <div style="display:flex; gap:0; min-height:500px;">
+      <!-- Left Menu -->
+      <div id="reportMenu" style="width:240px; border-right:2px solid #e2e8f0; padding-right:0; flex-shrink:0;">
+        <h3 style="font-size:14px; font-weight:700; color:#0f3460; padding:12px 16px; margin:0; border-bottom:1px solid #e2e8f0;">Reports Menu</h3>
+        <div style="display:flex; flex-direction:column;">
+          <button class="rpt-menu-btn rpt-menu-active" onclick="selectReport('newBookings', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            1. New Bookings by Month</button>
+          <button class="rpt-menu-btn" onclick="selectReport('billingPerf', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            2. Billing Performance</button>
+          <button class="rpt-menu-btn" onclick="selectReport('backlog', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            3. Total Backlog</button>
+          <button class="rpt-menu-btn" onclick="selectReport('milestoneSchedule', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            4. Milestone Schedule</button>
+          <button class="rpt-menu-btn" onclick="selectReport('commission', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            5. Quarterly Commission</button>
+          <button class="rpt-menu-btn" onclick="selectReport('arAging', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            6. A/R Aging Summary</button>
+          <button class="rpt-menu-btn" onclick="selectReport('revenueByClient', this)"
+            style="text-align:left; padding:10px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:#334155; border-left:3px solid transparent; transition:all 0.15s;">
+            7. Revenue by Client</button>
         </div>
-        <div id="backlogResults"></div>
       </div>
-      <div>
-        <h3 class="section-title">Milestone Schedule</h3>
-        <div class="flex gap-3 items-end mb-4">
-          <div>
-            <label class="form-label">From</label>
-            <input type="date" id="schedStart" class="form-input" style="width:160px;">
+      <!-- Right Content -->
+      <div id="reportContent" style="flex:1; padding:16px 20px; overflow-x:auto;">
+
+        <!-- Report 1: New Bookings by Month -->
+        <div id="rpt-newBookings" class="rpt-section">
+          <h3 class="section-title">New Bookings by Month</h3>
+          <div class="flex gap-3 items-end mb-4">
+            <div>
+              <label class="form-label">Year</label>
+              <input type="number" id="newBookingsYear" class="form-input" style="width:120px;" min="2020" max="2040">
+            </div>
+            <button class="btn btn-primary" onclick="runNewBookingsReport()">Generate</button>
+            <button class="btn btn-success" onclick="exportNewBookings()" style="display:none;" id="exportNewBookingsBtn">Export Excel</button>
           </div>
-          <div>
-            <label class="form-label">To</label>
-            <input type="date" id="schedEnd" class="form-input" style="width:160px;">
-          </div>
-          <button class="btn btn-primary" onclick="runScheduleReport()">Generate</button>
+          <div id="newBookingsResults"></div>
         </div>
-        <div id="scheduleResults"></div>
+
+        <!-- Report 2: Billing Performance -->
+        <div id="rpt-billingPerf" class="rpt-section" style="display:none;">
+          <h3 class="section-title">Billing Performance</h3>
+          <div class="flex gap-3 items-end mb-4">
+            <div>
+              <label class="form-label">Year</label>
+              <input type="number" id="billingPerfYear" class="form-input" style="width:120px;" min="2020" max="2040">
+            </div>
+            <button class="btn btn-primary" onclick="runBillingPerfReport()">Generate</button>
+            <button class="btn btn-success" onclick="exportBillingPerf()" style="display:none;" id="exportBillingPerfBtn">Export Excel</button>
+          </div>
+          <div id="billingPerfResults"></div>
+        </div>
+
+        <!-- Report 3: Total Backlog (existing) -->
+        <div id="rpt-backlog" class="rpt-section" style="display:none;">
+          <h3 class="section-title">Total Backlog Report</h3>
+          <div class="flex gap-3 items-end mb-4">
+            <div>
+              <label class="form-label">Start Month</label>
+              <input type="month" id="backlogMonth" class="form-input" style="width:200px;">
+            </div>
+            <button class="btn btn-primary" onclick="runBacklogReport()">Generate</button>
+          </div>
+          <div id="backlogResults"></div>
+        </div>
+
+        <!-- Report 4: Milestone Schedule (existing) -->
+        <div id="rpt-milestoneSchedule" class="rpt-section" style="display:none;">
+          <h3 class="section-title">Milestone Schedule</h3>
+          <div class="flex gap-3 items-end mb-4">
+            <div>
+              <label class="form-label">From</label>
+              <input type="date" id="schedStart" class="form-input" style="width:160px;">
+            </div>
+            <div>
+              <label class="form-label">To</label>
+              <input type="date" id="schedEnd" class="form-input" style="width:160px;">
+            </div>
+            <button class="btn btn-primary" onclick="runScheduleReport()">Generate</button>
+          </div>
+          <div id="scheduleResults"></div>
+        </div>
+
+        <!-- Report 5: Quarterly Commission (existing) -->
+        <div id="rpt-commission" class="rpt-section" style="display:none;">
+          <h3 class="section-title">Quarterly Commission Report</h3>
+          <div class="flex gap-3 items-end mb-4">
+            <div>
+              <label class="form-label">Year</label>
+              <input type="number" id="commReportYear" class="form-input" style="width:100px;" min="2020" max="2040">
+            </div>
+            <div>
+              <label class="form-label">Quarter</label>
+              <select id="commReportQuarter" class="form-input" style="width:100px;">
+                <option value="1">Q1</option><option value="2">Q2</option>
+                <option value="3">Q3</option><option value="4">Q4</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="runCommissionReport()">Generate</button>
+            <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#475569; margin-left:12px; cursor:pointer;">
+              <input type="checkbox" id="commIncludeZero"> Include orders with zero commission
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:#475569; margin-left:12px; cursor:pointer;">
+              <input type="checkbox" id="commIncludeNoPayment"> Include commission lines with no payment
+            </label>
+          </div>
+          <div id="commReportResults"></div>
+        </div>
+
+        <!-- Report 6: A/R Aging Summary (placeholder) -->
+        <div id="rpt-arAging" class="rpt-section" style="display:none;">
+          <h3 class="section-title">A/R Aging Summary</h3>
+          <p style="color:#64748b; font-size:14px; margin-top:20px;">Coming soon — This report will provide a detailed A/R aging breakdown by client with 30/60/90/90+ day buckets.</p>
+        </div>
+
+        <!-- Report 7: Revenue by Client (placeholder) -->
+        <div id="rpt-revenueByClient" class="rpt-section" style="display:none;">
+          <h3 class="section-title">Revenue by Client</h3>
+          <p style="color:#64748b; font-size:14px; margin-top:20px;">Coming soon — This report will show total revenue received per client across all orders.</p>
+        </div>
+
       </div>
     </div>
   </div>
@@ -159,16 +389,16 @@
         </div>
         <div style="max-height: 400px; overflow-y: auto;">
           <table class="data-table" id="usersTable"><thead><tr>
-            <th>Username</th><th>Full Name</th><th>Role</th><th>Permissions</th><th></th>
+            <th>Username</th><th>Full Name</th><th>Role</th><th>Actions</th>
           </tr></thead><tbody></tbody></table>
         </div>
       </div>
 
-      <!-- Contract Types -->
+      <!-- Order Categories -->
       <div>
         <div class="flex justify-between items-center mb-3">
-          <h3 class="section-title" style="margin:0;border:none;padding:0;">Contract Types</h3>
-          <button class="btn btn-primary btn-sm" onclick="openContractTypeModal()">+ Add Type</button>
+          <h3 class="section-title" style="margin:0;border:none;padding:0;">Order Categories</h3>
+          <button class="btn btn-primary btn-sm" onclick="openContractTypeModal()">+ Add Category</button>
         </div>
         <div style="max-height: 400px; overflow-y: auto;">
           <table class="data-table" id="contractTypesTable"><thead><tr>
@@ -205,18 +435,28 @@
   <h3 class="section-title" id="clientModalTitle">Add Client</h3>
   <input type="hidden" id="clientEditId">
   <div class="grid grid-cols-2 gap-3 mb-4">
-    <div><label class="form-label">Client ID (8 chars)</label>
+    <div><label class="form-label">Client ID (8 chars) *</label>
       <input class="form-input" id="fClientId" maxlength="8"></div>
-    <div><label class="form-label">Client Name</label>
+    <div><label class="form-label">Client Name *</label>
       <input class="form-input" id="fClientName"></div>
-    <div class="col-span-2"><label class="form-label">Billing Address</label>
-      <input class="form-input" id="fClientAddr"></div>
-    <div><label class="form-label">Contact Names</label>
+    <div><label class="form-label">Client Business *</label>
+      <select class="form-input" id="fClientBusiness">
+        <option value="">-- Select --</option>
+        <option value="Public Transit">Public Transit</option>
+        <option value="Private Transportation">Private Transportation</option>
+        <option value="Public non-transit">Public non-transit</option>
+        <option value="Private non-transit">Private non-transit</option>
+      </select></div>
+    <div class="col-span-2"><label class="form-label">Client Address *</label>
+      <textarea class="form-input" id="fClientAddr" rows="5" style="resize:vertical; white-space:pre-wrap; font-family:inherit;" placeholder="Name&#10;Street Address&#10;City, State ZIP&#10;Country"></textarea></div>
+    <div><label class="form-label">Client Contact</label>
       <input class="form-input" id="fClientContact"></div>
-    <div><label class="form-label">Billing Name</label>
-      <input class="form-input" id="fClientBillName"></div>
-    <div class="col-span-2"><label class="form-label">Billing Email</label>
+    <div><label class="form-label">Contact Email</label>
       <input class="form-input" id="fClientEmail" type="email"></div>
+    <div><label class="form-label">Phone Number</label>
+      <input class="form-input" id="fClientPhone" type="tel"></div>
+    <div><label class="form-label">General Info (80 chars)</label>
+      <input class="form-input" id="fClientInfo" maxlength="80"></div>
   </div>
   <div class="flex justify-end gap-2">
     <button class="btn" style="background:#e2e8f0;" onclick="closeModal('clientModal')">Cancel</button>
@@ -248,6 +488,13 @@
     </div>
   </div>
 
+  <!-- Company Access -->
+  <div style="margin-top:12px; padding:14px; background:#fefce8; border-radius:8px; border:1px solid #fbbf24;">
+    <h4 style="font-size:13px; font-weight:700; color:#0f3460; margin-bottom:10px;">Company Access</h4>
+    <p style="font-size:11px; color:#64748b; margin-bottom:8px;">Select which companies this user can access. Both can be selected.</p>
+    <div style="display:flex; gap:24px;" id="companyAccessArea"></div>
+  </div>
+
   <!-- Module Permissions -->
   <div style="margin-top:12px; padding:14px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
     <h4 style="font-size:13px; font-weight:700; color:#0f3460; margin-bottom:10px;">Module Permissions</h4>
@@ -255,8 +502,9 @@
       <thead>
         <tr style="border-bottom:2px solid #e2e8f0;">
           <th style="text-align:left; padding:6px 8px; color:#475569;">Module</th>
-          <th style="text-align:center; padding:6px 8px; color:#475569; width:80px;">Edit</th>
-          <th style="text-align:center; padding:6px 8px; color:#475569; width:80px;">Read</th>
+          <th style="text-align:center; padding:6px 8px; color:#475569; width:70px;">Edit</th>
+          <th style="text-align:center; padding:6px 8px; color:#475569; width:70px;">Read</th>
+          <th style="text-align:center; padding:6px 8px; color:#475569; width:70px;">Hidden</th>
         </tr>
       </thead>
       <tbody>
@@ -264,31 +512,37 @@
           <td style="padding:6px 8px;">SAP Reports</td>
           <td style="text-align:center;"><input type="radio" name="perm_sap_reports" value="Edit" checked></td>
           <td style="text-align:center;"><input type="radio" name="perm_sap_reports" value="Read"></td>
+          <td style="text-align:center;"><input type="radio" name="perm_sap_reports" value="Hidden"></td>
         </tr>
         <tr style="border-bottom:1px solid #f1f5f9;">
           <td style="padding:6px 8px;">Payroll Reports</td>
           <td style="text-align:center;"><input type="radio" name="perm_payroll_reports" value="Edit" checked></td>
           <td style="text-align:center;"><input type="radio" name="perm_payroll_reports" value="Read"></td>
+          <td style="text-align:center;"><input type="radio" name="perm_payroll_reports" value="Hidden"></td>
         </tr>
         <tr style="border-bottom:1px solid #f1f5f9;">
-          <td style="padding:6px 8px;">Orders Backlog - Accounts</td>
+          <td style="padding:6px 8px;">Orders Backlog - Clients</td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_accounts" value="Edit" checked></td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_accounts" value="Read"></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_accounts" value="Hidden"></td>
         </tr>
         <tr style="border-bottom:1px solid #f1f5f9;">
           <td style="padding:6px 8px;">Orders Backlog - Orders</td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_orders" value="Edit" checked></td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_orders" value="Read"></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_orders" value="Hidden"></td>
         </tr>
         <tr style="border-bottom:1px solid #f1f5f9;">
           <td style="padding:6px 8px;">Orders Backlog - Invoices</td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_invoices" value="Edit" checked></td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_invoices" value="Read"></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_invoices" value="Hidden"></td>
         </tr>
         <tr>
           <td style="padding:6px 8px;">Orders Backlog - Reports</td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_reports" value="Edit" checked></td>
           <td style="text-align:center;"><input type="radio" name="perm_ob_reports" value="Read"></td>
+          <td style="text-align:center;"><input type="radio" name="perm_ob_reports" value="Hidden"></td>
         </tr>
       </tbody>
     </table>
@@ -301,17 +555,18 @@
 </div>
 </div>
 
-<!-- Contract Type Modal -->
+<!-- Order Category Modal -->
 <div class="modal-overlay" id="contractTypeModal">
 <div class="modal" style="max-width:400px;">
-  <h3 class="section-title" id="ctModalTitle">Add Contract Type</h3>
+  <h3 class="section-title" id="ctModalTitle">Add Order Category</h3>
   <input type="hidden" id="ctEditId">
   <div class="grid gap-3 mb-4">
     <div><label class="form-label">Category</label>
       <select class="form-input" id="fCtCategory">
         <option value="SaaS">SaaS</option>
-        <option value="Development Service">Development Service</option>
-        <option value="Support Services">Support Services</option>
+        <option value="R&D">R&D</option>
+        <option value="Support">Support</option>
+        <option value="Others">Others</option>
       </select></div>
     <div><label class="form-label">Subcategory</label>
       <input class="form-input" id="fCtSubcategory"></div>
@@ -339,102 +594,221 @@
 </div>
 </div>
 
-<!-- Order Modal (Create / Edit) -->
+<!-- Order Modal (Create / Edit) — with Sub-Tabs per Section 3 -->
 <div class="modal-overlay" id="orderModal">
-<div class="modal">
-  <h3 class="section-title" id="orderModalTitle">New Order</h3>
+<div class="modal" style="max-width:960px;">
+  <div class="flex justify-between items-center mb-3">
+    <h3 class="section-title" id="orderModalTitle" style="margin:0;border:none;padding:0;">New Order</h3>
+    <button class="btn btn-sm" style="background:#e2e8f0;" onclick="closeModal('orderModal')">Close</button>
+  </div>
   <input type="hidden" id="orderEditId">
 
-  <div class="grid grid-cols-3 gap-3 mb-4">
-    <div><label class="form-label">Client</label>
-      <select class="form-input" id="fOrderClient"></select></div>
-    <div><label class="form-label">Order/Contract Name (12 chars)</label>
-      <input class="form-input" id="fOrderName" maxlength="12"></div>
-    <div><label class="form-label">Contract Type</label>
-      <select class="form-input" id="fOrderType"></select></div>
-    <div><label class="form-label">Company</label>
-      <select class="form-input" id="fOrderCompany"></select></div>
-    <div><label class="form-label">Date of Order</label>
-      <input class="form-input" type="date" id="fOrderDate"></div>
-    <div><label class="form-label">PO Number</label>
-      <input class="form-input" id="fOrderPO"></div>
-    <div><label class="form-label">Contract Amount ($)</label>
-      <input class="form-input" type="number" step="0.01" id="fOrderAmount"></div>
+  <!-- Order Sub-Tab Navigation -->
+  <div id="orderSubTabs" style="display:none; margin-bottom:12px;">
+    <div style="display:flex; gap:3px; border-bottom:2px solid #e2e8f0; padding-bottom:0;">
+      <button class="ord-tab active" onclick="showOrderTab('entry', this)">Order Entry</button>
+      <button class="ord-tab" onclick="showOrderTab('invsetup', this)">Invoice Setup</button>
+      <button class="ord-tab" onclick="showOrderTab('notes', this)">Notes</button>
+      <button class="ord-tab" onclick="showOrderTab('invoices', this)">Invoices</button>
+      <button class="ord-tab" onclick="showOrderTab('receipts', this)">Receipts</button>
+      <button class="ord-tab" id="commissionTabBtn" onclick="showOrderTab('commission', this)" style="display:none; margin-left:auto; color:#8b6914;">Commission</button>
+    </div>
   </div>
 
-  <div class="flex justify-end gap-2 mb-4">
-    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('orderModal')">Cancel</button>
-    <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
-  </div>
+  <!-- ═══ SUB-TAB 3.1: ORDER ENTRY ═══ -->
+  <div id="ordTab-entry" class="ord-panel active">
 
-  <div id="milestonesSection" style="display:none;">
-    <div class="flex justify-between items-center mb-3">
-      <h4 class="section-title" style="margin:0;border:none;padding:0;">
-        Milestones <span id="milestoneCount" class="badge badge-blue">0/15</span>
-        <span id="milestoneDiff" class="badge badge-amber" style="margin-left:8px;"></span>
-      </h4>
-      <button class="btn btn-primary btn-sm" onclick="openMilestoneForm()">+ Add Milestone</button>
-    </div>
-    <table class="data-table" id="milestonesTable"><thead><tr>
-      <th>Name</th><th>Scheduled</th><th>Amount</th><th>Type</th><th>Rescheduled</th><th>Description</th><th>Billed</th><th></th>
-    </tr></thead><tbody></tbody></table>
-
-    <div id="milestoneForm" style="display:none; margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px;">
-      <input type="hidden" id="msEditId">
-      <div class="grid grid-cols-4 gap-3 mb-3">
-        <div><label class="form-label">Name (12 chars)</label>
-          <input class="form-input" id="fMsName" maxlength="12"></div>
-        <div><label class="form-label">Scheduled Date</label>
-          <input class="form-input" type="date" id="fMsDate"></div>
-        <div><label class="form-label">Amount ($)</label>
-          <input class="form-input" type="number" step="0.01" id="fMsAmount"></div>
-        <div><label class="form-label">Type</label>
-          <select class="form-input" id="fMsType">
-            <option value="Estimate">Estimate</option>
-            <option value="Confirmed">Confirmed</option>
-          </select></div>
-        <div class="col-span-2"><label class="form-label">Description (50 chars)</label>
-          <input class="form-input" id="fMsDesc" maxlength="50"></div>
-        <div><label class="form-label">Rescheduled Date</label>
-          <input class="form-input" type="date" id="fMsResched"></div>
-        <div><label class="form-label">Reason for Rescheduling</label>
-          <input class="form-input" id="fMsReason"></div>
-      </div>
-      <div id="msChangeReasonRow" style="display:none;" class="mb-3">
-        <label class="form-label">Reason for Change (required for edits)</label>
-        <input class="form-input" id="fMsChangeReason">
-      </div>
-      <div class="flex justify-end gap-2">
-        <button class="btn" style="background:#e2e8f0;" onclick="closeMilestoneForm()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveMilestone()">Save Milestone</button>
-      </div>
+    <!-- Row 1: Client, Order Name, Category, Company, PO# -->
+    <div class="grid gap-3 mb-3" style="grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr;">
+      <div><label class="form-label">Client *</label>
+        <select class="form-input" id="fOrderClient"></select></div>
+      <div><label class="form-label">Order Name (25 chars) *</label>
+        <input class="form-input" id="fOrderName" maxlength="25"></div>
+      <div><label class="form-label">Order Category *</label>
+        <select class="form-input" id="fOrderType"></select></div>
+      <div><label class="form-label">Company *</label>
+        <select class="form-input" id="fOrderCompany"></select></div>
+      <div><label class="form-label">Purchase Order #</label>
+        <input class="form-input" id="fOrderPO" maxlength="100" placeholder="Optional"></div>
     </div>
 
-    <div class="mt-6">
-      <div class="flex justify-between items-center mb-3">
-        <h4 class="section-title" style="margin:0;border:none;padding:0;">
-          Performance Notes <span id="noteCount" class="badge badge-blue">0/50</span>
-        </h4>
-      </div>
-      <div class="flex gap-2 mb-3">
-        <input class="form-input" id="fNoteText" maxlength="50" placeholder="Add a note (50 chars max)..." style="flex:1;">
-        <button class="btn btn-primary" onclick="addNote()">Add Note</button>
-      </div>
-      <div id="notesList" style="max-height:200px; overflow-y:auto;"></div>
+    <!-- Row 2: Dates + Value -->
+    <div class="grid grid-cols-4 gap-3 mb-3">
+      <div><label class="form-label">Order Date *</label>
+        <input class="form-input" type="date" id="fOrderDate"></div>
+      <div><label class="form-label">Delivery Start Date *</label>
+        <input class="form-input" type="date" id="fOrderDeliveryStart"></div>
+      <div><label class="form-label">Order End Date *</label>
+        <input class="form-input" type="date" id="fOrderEndDate"></div>
+      <div><label class="form-label">Order Total Value ($) *</label>
+        <input class="form-input" type="number" step="0.01" id="fOrderAmount"></div>
     </div>
 
-    <div class="mt-6 grid grid-cols-2 gap-4">
-      <div>
-        <label class="form-label">Contract PDF</label>
-        <div class="flex gap-2 items-center">
-          <input type="file" id="contractPdfInput" accept=".pdf" class="form-input" style="padding:4px;">
-          <button class="btn btn-primary btn-sm" onclick="uploadPdf('contracts')">Upload</button>
-          <span id="contractPdfLink"></span>
+    <!-- Row 3: Estimate/Actual + Description -->
+    <div class="grid grid-cols-4 gap-3 mb-3">
+      <div style="display:flex; align-items:flex-end; gap:12px; padding-bottom:4px;">
+        <label style="font-size:12px; font-weight:600; color:#475569; display:flex; align-items:center; gap:6px;">
+          <input type="radio" name="orderEstimate" id="fOrderEstimateYes" value="true" checked>
+          Estimate
+        </label>
+        <label style="font-size:12px; font-weight:600; color:#475569; display:flex; align-items:center; gap:6px;">
+          <input type="radio" name="orderEstimate" id="fOrderEstimateNo" value="false">
+          Actual
+        </label>
+      </div>
+      <div class="col-span-3"><label class="form-label">Order Description (80 chars)</label>
+        <input class="form-input" id="fOrderDesc" maxlength="80"></div>
+    </div>
+
+    <div class="flex justify-end gap-2 mb-4">
+      <button class="btn btn-primary" onclick="saveOrder()">Save Order</button>
+    </div>
+
+    <!-- Order Summary (visible in edit mode) -->
+    <div id="orderSummaryBox" style="display:none; padding:12px; background:#f0f4f8; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:12px;">
+      <div class="grid grid-cols-4 gap-3" style="font-size:13px;">
+        <div><strong>Order Value:</strong><br><span id="sumContractAmt">$0</span></div>
+        <div><strong>Scheduled Milestones:</strong><br><span id="sumMsTotal">$0</span></div>
+        <div><strong>Unscheduled Amount:</strong><br><span id="sumDiff" style="font-weight:700;">$0</span></div>
+        <div><strong>Total Invoiced:</strong><br><span id="sumInvoiced">$0</span></div>
+      </div>
+    </div>
+
+    <!-- Commission Summary Banner (inline in Order Entry tab) -->
+    <div id="commissionBanner" style="display:none; margin-bottom:12px; padding:12px 16px; background:linear-gradient(135deg,#fefce8,#fef9c3); border:1px solid #fbbf24; border-radius:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:24px;">
+          <span style="font-size:14px; font-weight:700; color:#92400e;">Commission</span>
+          <div style="display:flex; gap:20px;">
+            <div style="background:white; border:1px solid #e5e7eb; border-radius:6px; padding:6px 14px; min-width:140px; text-align:center;">
+              <div style="font-size:10px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Sales Total</div>
+              <div style="font-size:18px; font-weight:700; color:#1a4a8a;" id="commBannerSales">0.00%</div>
+            </div>
+            <div style="background:white; border:1px solid #e5e7eb; border-radius:6px; padding:6px 14px; min-width:140px; text-align:center;">
+              <div style="font-size:10px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">Support Total</div>
+              <div style="font-size:18px; font-weight:700; color:#1a4a8a;" id="commBannerSupport">0.00%</div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-primary btn-sm" id="commBannerAddBtn" onclick="showOrderTab('commission', document.getElementById('commissionTabBtn'))">Add</button>
+          <button class="btn btn-edit btn-sm" id="commBannerEditBtn" onclick="showOrderTab('commission', document.getElementById('commissionTabBtn'))" style="display:none;">Edit</button>
         </div>
       </div>
-      <div>
-        <label class="form-label">Purchase Order PDF</label>
-        <div class="flex gap-2 items-center">
+    </div>
+
+    <!-- Milestones Table (inline in Order Entry tab) -->
+    <div id="milestonesSection" style="display:none;">
+      <!-- Milestone Summary Banner (collapsed by default) -->
+      <div id="msSummaryBanner" style="padding:12px 16px; background:linear-gradient(135deg,#f0f4f8,#e2e8f0); border:1px solid #cbd5e1; border-radius:8px; margin-bottom:8px; cursor:pointer;" onclick="toggleMilestoneExpand()">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <span id="msExpandArrow" style="font-size:12px; color:#64748b; transition:transform 0.2s;">&#9654;</span>
+            <span style="font-size:14px; font-weight:700; color:#0f3460;">Milestones</span>
+            <span id="milestoneCount" class="badge badge-blue" style="font-size:11px;">0/60</span>
+            <div style="display:flex; gap:16px; font-size:13px; color:#475569;">
+              <span>Total: <strong id="msSumTotal">$0</strong></span>
+              <span>Scheduled: <strong id="msSumScheduled">$0</strong></span>
+              <span id="milestoneDiff" class="badge badge-amber" style="font-size:11px;"></span>
+            </div>
+          </div>
+          <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
+            <button class="btn btn-primary btn-sm" onclick="openMilestoneForm()">+ Add Milestone</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expandable Milestone Detail Table (hidden by default) -->
+      <div id="msDetailSection" style="display:none;">
+        <table class="data-table" id="milestonesTable"><thead><tr>
+          <th>Name</th><th>Scheduled</th><th>Amount</th><th>Type</th><th>Rescheduled</th><th>Description</th><th>Billed</th><th></th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+
+      <div id="milestoneForm" style="display:none; margin-top:12px; padding:12px; background:#f8fafc; border-radius:8px;">
+        <input type="hidden" id="msEditId">
+
+        <!-- Mode Toggle: Standard vs Periodic -->
+        <div style="display:flex; gap:16px; margin-bottom:10px; align-items:center;">
+          <label style="font-size:13px; font-weight:600; color:#475569; display:flex; align-items:center; gap:5px;">
+            <input type="radio" name="msMode" value="standard" checked onchange="toggleMsMode()"> Standard
+          </label>
+          <label style="font-size:13px; font-weight:600; color:#475569; display:flex; align-items:center; gap:5px;">
+            <input type="radio" name="msMode" value="periodic" onchange="toggleMsMode()"> Periodic
+          </label>
+          <span id="msModeHint" style="font-size:11px; color:#94a3b8; margin-left:8px;">Single milestone entry</span>
+        </div>
+
+        <!-- ── STANDARD milestone fields ── -->
+        <div id="msStandardFields">
+          <div class="grid grid-cols-4 gap-3 mb-3">
+            <div><label class="form-label">Milestone Name (25 chars)</label>
+              <input class="form-input" id="fMsName" maxlength="25"></div>
+            <div><label class="form-label">Amount ($)</label>
+              <input class="form-input" type="number" step="0.01" id="fMsAmount"></div>
+            <div><label class="form-label">Scheduled Date</label>
+              <input class="form-input" type="date" id="fMsDate"></div>
+            <div><label class="form-label">Type</label>
+              <select class="form-input" id="fMsType">
+                <option value="Estimate">Estimate</option>
+                <option value="Confirmed">Confirmed</option>
+              </select></div>
+            <div class="col-span-2"><label class="form-label">Description (50 chars)</label>
+              <input class="form-input" id="fMsDesc" maxlength="50"></div>
+          </div>
+          <!-- Collapsible Reschedule / Edit Details section -->
+          <div id="msReschedToggle" class="mb-3">
+            <a href="#" id="msReschedLink" onclick="event.preventDefault(); var sec=document.getElementById('msReschedSection'); var show=sec.style.display==='none'; sec.style.display=show?'block':'none'; this.textContent=show?'▾ Hide Change Details':'▸ Reschedule / Edit Details';" style="color:#2563eb; font-size:13px; font-weight:600; text-decoration:none;">▸ Reschedule / Edit Details</a>
+            <div id="msReschedSection" style="display:none; margin-top:8px; padding:10px; background:#f1f5f9; border-radius:6px;">
+              <div class="grid grid-cols-2 gap-3 mb-3">
+                <div><label class="form-label">Rescheduled Date</label>
+                  <input class="form-input" type="date" id="fMsResched"></div>
+                <div><label class="form-label">Reason for Rescheduling</label>
+                  <input class="form-input" id="fMsReason"></div>
+              </div>
+              <div id="msChangeReasonRow">
+                <label class="form-label">Reason for Change (required for edits)</label>
+                <input class="form-input" id="fMsChangeReason">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── PERIODIC milestone fields ── -->
+        <div id="msPeriodicFields" style="display:none;">
+          <div class="grid gap-3 mb-3" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;">
+            <div><label class="form-label">Frequency</label>
+              <select class="form-input" id="fMsPeriodType" onchange="updatePeriodicPreview()">
+                <option value="Monthly">Monthly</option>
+                <option value="Quarterly">Quarterly</option>
+                <option value="Every 6 Months">Every 6 Months</option>
+                <option value="Yearly">Yearly</option>
+              </select></div>
+            <div><label class="form-label">Start Date</label>
+              <input class="form-input" type="date" id="fMsPeriodStart" onchange="updatePeriodicPreview()"></div>
+            <div><label class="form-label">Number of Periods</label>
+              <input class="form-input" type="number" min="1" max="60" id="fMsPeriodCount" value="12" onchange="updatePeriodicPreview()" oninput="updatePeriodicPreview()"></div>
+            <div><label class="form-label">Amount per Period ($)</label>
+              <input class="form-input" type="number" step="0.01" id="fMsPeriodAmount" oninput="updatePeriodicPreview()"></div>
+            <div><label class="form-label">Type</label>
+              <select class="form-input" id="fMsPeriodMsType">
+                <option value="Estimate">Estimate</option>
+                <option value="Confirmed">Confirmed</option>
+              </select></div>
+          </div>
+          <div id="periodicPreview" style="margin-bottom:10px; padding:10px; background:#f1f5f9; border-radius:6px; font-size:12px; max-height:180px; overflow-y:auto;"></div>
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <button class="btn" style="background:#e2e8f0;" onclick="closeMilestoneForm()">Cancel</button>
+          <button class="btn btn-primary" id="msSaveBtn" onclick="saveMilestone()">Save Milestone</button>
+        </div>
+      </div>
+
+      <!-- Purchase Order Upload -->
+      <div style="margin-top:16px; padding:12px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <label class="form-label" style="font-size:13px; font-weight:700;">Purchase Order PDF (up to 80 pages)</label>
+        <div class="flex gap-2 items-center mt-2">
           <input type="file" id="poPdfInput" accept=".pdf" class="form-input" style="padding:4px;">
           <button class="btn btn-primary btn-sm" onclick="uploadPdf('po')">Upload</button>
           <span id="poPdfLink"></span>
@@ -442,31 +816,157 @@
       </div>
     </div>
   </div>
+
+  <!-- ═══ SUB-TAB 3.2: INVOICE SETUP ═══ -->
+  <div id="ordTab-invsetup" class="ord-panel" style="display:none;">
+    <h4 style="font-size:14px; font-weight:700; color:#0f3460; margin-bottom:12px;">Invoice Setup (one-time per order)</h4>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div style="padding:14px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+        <label class="form-label" style="font-size:13px; font-weight:700;">Invoice Template (Word or PDF)</label>
+        <div class="flex gap-2 items-center mt-2">
+          <input type="file" id="invTemplateInput" accept=".pdf,.doc,.docx" class="form-input" style="padding:4px;">
+          <button class="btn btn-primary btn-sm" onclick="uploadInvTemplate()">Upload</button>
+        </div>
+        <div id="invTemplateLink" style="margin-top:8px;"></div>
+      </div>
+      <div>
+        <label class="form-label">Invoice Number (Alphanumeric 15 chars)</label>
+        <input class="form-input" id="fInvSetupNumber" maxlength="15">
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div><label class="form-label">Invoice Contact Name</label>
+        <input class="form-input" id="fInvSetupContact"></div>
+      <div><label class="form-label">Email for Invoice</label>
+        <input class="form-input" id="fInvSetupEmail" type="email"></div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Mailing Address</label>
+      <input class="form-input" id="fInvSetupAddr">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 mb-3">
+      <div><label class="form-label">Method of Invoice</label>
+        <select class="form-input" id="fInvSetupMethod">
+          <option value="">-- Select --</option>
+          <option value="Email">Email</option>
+          <option value="Post">Post</option>
+          <option value="Others">Others</option>
+        </select></div>
+      <div><label class="form-label">Wire / ACH Bank Data</label>
+        <input class="form-input" id="fInvSetupWire"></div>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button class="btn btn-primary" onclick="saveInvoiceSetup()">Save Invoice Setup</button>
+    </div>
+  </div>
+
+  <!-- ═══ SUB-TAB: NOTES ═══ -->
+  <div id="ordTab-notes" class="ord-panel" style="display:none;">
+    <div class="flex justify-between items-center mb-3">
+      <h4 style="font-size:14px; font-weight:700; color:#0f3460; margin:0;">
+        Performance Notes <span id="noteCount" class="badge badge-blue">0/50</span>
+      </h4>
+    </div>
+    <div class="flex gap-2 mb-3">
+      <input class="form-input" id="fNoteText" maxlength="50" placeholder="Add a note (50 chars max)..." style="flex:1;">
+      <button class="btn btn-primary" onclick="addNote()">Add Note</button>
+    </div>
+    <div id="notesList" style="max-height:400px; overflow-y:auto;"></div>
+  </div>
+
+  <!-- ═══ SUB-TAB: INVOICES ═══ -->
+  <div id="ordTab-invoices" class="ord-panel" style="display:none;">
+    <div class="flex justify-between items-center mb-3">
+      <h4 style="font-size:14px; font-weight:700; color:#0f3460; margin:0;">
+        Invoices for this Order
+      </h4>
+      <button class="btn btn-primary btn-sm" onclick="openInvoiceModalForOrder()">+ Create Invoice</button>
+    </div>
+    <table class="data-table" id="orderInvoicesTable"><thead><tr>
+      <th>Invoice #</th><th>Milestone</th><th>Date</th><th>Amount</th><th>Received</th><th>Balance</th><th>PDF</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- ═══ SUB-TAB: RECEIPTS ═══ -->
+  <div id="ordTab-receipts" class="ord-panel" style="display:none;">
+    <div class="flex justify-between items-center mb-3">
+      <h4 style="font-size:14px; font-weight:700; color:#0f3460; margin:0;">
+        Payment Receipts for this Order
+      </h4>
+    </div>
+    <table class="data-table" id="orderReceiptsTable"><thead><tr>
+      <th>Invoice #</th><th>Receipt Date</th><th>Invoice Amt</th><th>Receipt Amt</th><th>Difference</th><th>Status</th><th>Notes</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <!-- ═══ SUB-TAB: COMMISSION ═══ -->
+  <div id="ordTab-commission" class="ord-panel" style="display:none;">
+    <h4 style="font-size:14px; font-weight:700; color:#0f3460; margin-bottom:12px;">Commission Structure</h4>
+
+    <!-- Sales Commission -->
+    <div style="margin-bottom:18px; border:1px solid #e2e8f0; border-radius:8px; padding:14px;">
+      <h5 style="font-size:13px; font-weight:700; color:#1a4a8a; margin-bottom:10px;">Sales Commission (up to 2 individuals)</h5>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:6px;">
+        <span style="font-size:11px; font-weight:600; color:#64748b;">Name</span>
+        <span style="font-size:11px; font-weight:600; color:#64748b;">Commission %</span>
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:6px;">
+        <input class="form-input" id="commSalesName1" placeholder="Sales person 1">
+        <input class="form-input" type="number" step="0.01" min="0" max="100" id="commSalesPct1" placeholder="%" oninput="updateCommTotals()">
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:8px;">
+        <input class="form-input" id="commSalesName2" placeholder="Sales person 2">
+        <input class="form-input" type="number" step="0.01" min="0" max="100" id="commSalesPct2" placeholder="%" oninput="updateCommTotals()">
+      </div>
+      <div style="text-align:right; font-size:13px; font-weight:700; color:#1a4a8a;">
+        Total Sales Commission: <span id="commSalesTotal">0.00</span>%
+      </div>
+    </div>
+
+    <!-- Support Commission -->
+    <div style="margin-bottom:18px; border:1px solid #e2e8f0; border-radius:8px; padding:14px;">
+      <h5 style="font-size:13px; font-weight:700; color:#1a4a8a; margin-bottom:10px;">Support Commission (up to 4 individuals)</h5>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:6px;">
+        <span style="font-size:11px; font-weight:600; color:#64748b;">Name</span>
+        <span style="font-size:11px; font-weight:600; color:#64748b;">Commission %</span>
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:6px;">
+        <input class="form-input" id="commSuppName1" placeholder="Support person 1">
+        <input class="form-input" type="number" step="0.01" min="0" max="100" id="commSuppPct1" placeholder="%" oninput="updateCommTotals()">
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:6px;">
+        <input class="form-input" id="commSuppName2" placeholder="Support person 2">
+        <input class="form-input" type="number" step="0.01" min="0" max="100" id="commSuppPct2" placeholder="%" oninput="updateCommTotals()">
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:6px;">
+        <input class="form-input" id="commSuppName3" placeholder="Support person 3">
+        <input class="form-input" type="number" step="0.01" min="0" max="100" id="commSuppPct3" placeholder="%" oninput="updateCommTotals()">
+      </div>
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:8px;">
+        <input class="form-input" id="commSuppName4" placeholder="Support person 4">
+        <input class="form-input" type="number" step="0.01" min="0" max="100" id="commSuppPct4" placeholder="%" oninput="updateCommTotals()">
+      </div>
+      <div style="text-align:right; font-size:13px; font-weight:700; color:#1a4a8a;">
+        Total Support Commission: <span id="commSuppTotal">0.00</span>%
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:14px; font-weight:700; color:#0f3460;">Grand Total Commission: <span id="commGrandTotal">0.00</span>%</span>
+      <button class="btn btn-primary" onclick="saveCommission()">Save Commission</button>
+    </div>
+  </div>
+
 </div>
 </div>
 
 <!-- Invoice Modal -->
-<div class="modal-overlay" id="invoiceModal">
-<div class="modal" style="max-width:500px;">
-  <h3 class="section-title">Create Invoice</h3>
-  <div class="grid grid-cols-2 gap-3 mb-4">
-    <div><label class="form-label">Order</label>
-      <select class="form-input" id="fInvOrder" onchange="loadMilestonesForInvoice()"></select></div>
-    <div><label class="form-label">Milestone</label>
-      <select class="form-input" id="fInvMilestone" onchange="prefillInvoiceAmount()"></select></div>
-    <div><label class="form-label">Invoice Number</label>
-      <input class="form-input" id="fInvNumber"></div>
-    <div><label class="form-label">Invoice Date</label>
-      <input class="form-input" type="date" id="fInvDate"></div>
-    <div><label class="form-label">Invoice Amount ($)</label>
-      <input class="form-input" type="number" step="0.01" id="fInvAmount"></div>
-  </div>
-  <div class="flex justify-end gap-2">
-    <button class="btn" style="background:#e2e8f0;" onclick="closeModal('invoiceModal')">Cancel</button>
-    <button class="btn btn-primary" onclick="saveInvoice()">Create Invoice</button>
-  </div>
-</div>
-</div>
+<!-- Invoice modal removed — form is now inline in the Invoices panel -->
 
 <!-- Receipt Modal -->
 <div class="modal-overlay" id="receiptModal">
@@ -499,10 +999,154 @@ const PERM_KEYS = ['sap_reports', 'payroll_reports', 'ob_accounts', 'ob_orders',
 // ── Helpers ──────────────────────────────
 function fmt(n) { return new Intl.NumberFormat('en-US', {style:'currency', currency:'USD'}).format(n||0); }
 
+async function loadStats() {
+  const stats = await apiFetch('/api/stats');
+  if (!stats) return;
+  document.getElementById('statClientsOrders').textContent = (stats.total_clients || 0) + ', ' + (stats.active_orders || 0);
+  document.getElementById('statValue').textContent = fmt(stats.total_order_value);
+  document.getElementById('statMilestones').textContent = stats.mls_to_invoice || 0;
+  document.getElementById('statInvoicedYear').textContent = fmt(stats.total_invoiced);
+  document.getElementById('statBacklog').textContent = fmt(stats.backlog_year);
+  document.getElementById('statBacklogAfter').textContent = fmt(stats.backlog_after_year);
+  document.getElementById('statInvoices').textContent = stats.open_invoices || 0;
+  document.getElementById('statBalance').textContent = fmt(stats.outstanding_balance);
+  // Update labels with current year from server
+  if (stats.backlog_year_label) {
+    document.getElementById('backlogLabel').textContent = 'Backlog ' + stats.backlog_year_label;
+    document.getElementById('invoicedLabel').textContent = 'Total Invoiced';
+    document.getElementById('backlogAfterLabel').textContent = 'Bklg after ' + stats.backlog_year_label;
+    document.getElementById('remainMlsHeader').textContent = 'Remaining MLS ' + stats.backlog_year_label;
+  }
+}
+
+// ── Drill-Down ──────────────────────────────
+let drilldownData = null;
+let drilldownActiveCard = null;
+
+async function openDrilldown(type, cardEl) {
+  // Highlight the clicked card
+  document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('dd-active'));
+  cardEl.classList.add('dd-active');
+  drilldownActiveCard = cardEl;
+
+  const area = document.getElementById('drilldownArea');
+  area.style.display = 'block';
+  document.getElementById('drilldownContent').innerHTML = '<p style="color:#94a3b8; text-align:center; padding:20px;">Loading...</p>';
+  document.getElementById('drilldownFooter').textContent = '';
+  document.getElementById('drilldownTitle').textContent = 'Loading...';
+
+  const data = await apiFetch('/api/stats/drilldown?type=' + type);
+  if (!data || data.error) {
+    document.getElementById('drilldownContent').innerHTML = '<p style="color:#dc2626; text-align:center; padding:20px;">Error loading data</p>';
+    return;
+  }
+  drilldownData = data;
+  document.getElementById('drilldownTitle').textContent = data.title || 'Drill-Down';
+
+  const rows = data.rows || [];
+  if (rows.length === 0) {
+    document.getElementById('drilldownContent').innerHTML = '<p style="color:#94a3b8; text-align:center; padding:20px;">No records found</p>';
+    document.getElementById('drilldownFooter').textContent = '';
+    return;
+  }
+
+  // Build table from rows (dynamic columns)
+  const cols = Object.keys(rows[0]);
+  let html = '<table class="data-table" id="drilldownTable"><thead><tr>';
+  html += cols.map(c => '<th>' + c + '</th>').join('');
+  html += '</tr></thead><tbody>';
+  for (const row of rows) {
+    html += '<tr>';
+    for (const col of cols) {
+      const val = row[col];
+      const isIntCol = col === 'Days Overdue' || col === 'Days Since Invoice' || col === 'Days to Invoice';
+      if (typeof val === 'number' && !isIntCol) {
+        html += '<td style="text-align:right;">' + fmt(val) + '</td>';
+      } else if (isIntCol) {
+        html += '<td style="text-align:center;">' + (val !== null ? val : '') + '</td>';
+      } else {
+        html += '<td>' + (val !== null && val !== undefined ? val : '') + '</td>';
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('drilldownContent').innerHTML = html;
+
+  // Footer with total (and aging buckets if present)
+  if (data.total !== undefined && data.total_label) {
+    let footerHtml = '';
+    if (data.total_scheduled !== undefined) {
+      footerHtml += '<span>Scheduled Total: ' + fmt(data.total_scheduled) + ' &nbsp;|&nbsp; ' + data.total_label + ': ' + fmt(data.total) + ' &nbsp;|&nbsp; Difference: ' + fmt(data.total_scheduled - data.total) + '  (' + rows.length + ' rows)</span>';
+    } else {
+      footerHtml += '<span>' + data.total_label + ': ' + fmt(data.total) + '  (' + rows.length + ' rows)</span>';
+    }
+    if (data.aging) {
+      footerHtml += '<div style="display:flex; gap:16px; margin-top:6px; font-size:13px;">';
+      for (const [bucket, amt] of Object.entries(data.aging)) {
+        const color = bucket === '90+ Days' ? '#dc2626' : bucket === '61-90 Days' ? '#d97706' : bucket === '31-60 Days' ? '#2563eb' : '#16a34a';
+        footerHtml += '<span style="color:' + color + '; font-weight:600;">' + bucket + ': ' + fmt(amt) + '</span>';
+      }
+      footerHtml += '</div>';
+    }
+    document.getElementById('drilldownFooter').innerHTML = footerHtml;
+  }
+
+  // Scroll into view
+  area.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeDrilldown() {
+  document.getElementById('drilldownArea').style.display = 'none';
+  document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('dd-active'));
+  drilldownData = null;
+  drilldownActiveCard = null;
+}
+
+function exportDrilldown() {
+  if (!drilldownData || !drilldownData.rows || drilldownData.rows.length === 0) {
+    alert('No data to export');
+    return;
+  }
+  const rows = drilldownData.rows;
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Auto-size columns
+  const cols = Object.keys(rows[0]);
+  ws['!cols'] = cols.map(c => ({ wch: Math.max(c.length + 2, 14) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Drilldown');
+  const today = new Date().toISOString().split('T')[0];
+  const safeName = (drilldownData.title || 'Drilldown').replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30).trim();
+  XLSX.writeFile(wb, safeName + '_' + today + '.xlsx');
+}
+
 async function apiFetch(path, opts={}) {
-  const res = await fetch(API + path, { credentials: 'include', ...opts });
-  if (res.status === 401) { window.top.location.href = '/login'; return null; }
-  return res.json();
+  try {
+    const res = await fetch(API + path, { credentials: 'include', ...opts });
+    if (res.status === 401) { window.top.location.href = '/login'; return null; }
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch(parseErr) {
+      // Server returned non-JSON (e.g. plain text "Internal Server Error")
+      if (!res.ok) {
+        console.error('Server error on ' + path + ':', text.substring(0, 300));
+        alert('Server error on ' + path + ': ' + text.substring(0, 150));
+      }
+      return null;
+    }
+    if (!res.ok) {
+      const errMsg = data.error || data.detail || ('Server error: ' + res.status);
+      console.error('API error on ' + path + ':', errMsg);
+      alert('Error: ' + errMsg);
+      return null;
+    }
+    return data;
+  } catch(e) {
+    console.error('Network error on ' + path + ':', e);
+    return null;
+  }
 }
 
 async function apiPost(path, body) {
@@ -527,13 +1171,21 @@ function showTab(name, btn) {
   document.getElementById('panel-' + name).classList.add('active');
   btn.classList.add('active');
   if (name === 'orders') loadOrders();
-  if (name === 'invoices') loadInvoices();
+  if (name === 'invoices') loadInvoiceTab();
+  if (name === 'receipts') loadReceiptsTab();
   if (name === 'admin') { loadUsers(); loadContractTypes(); loadCompanies(); }
   if (name === 'accounts') loadClients();
 }
 
 function openModal(id) { document.getElementById(id).classList.add('show'); }
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function showOrderTab(name, btn) {
+  document.querySelectorAll('.ord-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.ord-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('ordTab-' + name).style.display = 'block';
+  if (btn) btn.classList.add('active');
+}
 
 // ── Init ─────────────────────────────────
 async function init() {
@@ -547,14 +1199,56 @@ async function init() {
         const adminBtn = document.getElementById('adminTabBtn');
         if (adminBtn) adminBtn.style.display = 'none';
       }
+      // Hide tabs where permission is "Hidden"
+      const perms = currentSession.permissions || {};
+      const tabHideMap = {
+        ob_accounts: 'accounts',
+        ob_orders: 'orders',
+        ob_invoices: ['invoices', 'receipts'],
+        ob_reports: 'reports',
+      };
+      for (const [permKey, tabIds] of Object.entries(tabHideMap)) {
+        if (perms[permKey] === 'Hidden') {
+          const ids = Array.isArray(tabIds) ? tabIds : [tabIds];
+          ids.forEach(id => {
+            // Hide the tab button
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(btn => {
+              if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + id + "'")) {
+                btn.style.display = 'none';
+              }
+            });
+          });
+        }
+      }
     }
   } catch(e) { console.warn('Could not load session', e); }
   await Promise.all([loadClients(), loadContractTypes(), loadCompanies()]);
-  loadOrders();
+  // Check if we should auto-open the Admin tab (from portal Admin top-level tab)
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'admin' && currentSession.role === 'Admin') {
+    showTab('admin', document.getElementById('adminTabBtn'));
+  } else {
+    // Find first visible tab to show
+    const perms2 = (currentSession && currentSession.permissions) || {};
+    if (perms2.ob_orders !== 'Hidden') {
+      loadOrders();
+    } else {
+      // Show first non-hidden tab
+      const firstVisible = document.querySelector('.tab-btn:not([style*="display: none"]):not([style*="display:none"])');
+      if (firstVisible) firstVisible.click();
+    }
+  }
+  loadStats();
+  // Default report year inputs
+  initReportDefaults();
+  const now = new Date();
+  document.getElementById('commReportQuarter').value = Math.ceil((now.getMonth() + 1) / 3);
 }
 
 // ── Users ────────────────────────────────
 function permBadge(val) {
+  if (val === 'Hidden') return '<span class="badge" style="background:#fee2e2;color:#991b1b;font-size:10px;">Hidden</span>';
   return val === 'Read'
     ? '<span class="badge" style="background:#fef3c7;color:#92400e;font-size:10px;">Read</span>'
     : '<span class="badge" style="background:#dcfce7;color:#166534;font-size:10px;">Edit</span>';
@@ -564,19 +1258,11 @@ async function loadUsers() {
   allUsers = await apiFetch('/api/users') || [];
   const tbody = document.querySelector('#usersTable tbody');
   tbody.innerHTML = allUsers.map(u => {
-    const perms = u.permissions || {};
     return `<tr>
     <td>${u.username}</td><td>${u.fullname}</td>
     <td><span class="badge ${u.role==='Admin'?'badge-amber':'badge-blue'}">${u.role}</span></td>
-    <td style="font-size:11px;">
-      SAP ${permBadge(perms.sap_reports)}
-      Pay ${permBadge(perms.payroll_reports)}
-      Acct ${permBadge(perms.ob_accounts)}
-      Ord ${permBadge(perms.ob_orders)}
-      Inv ${permBadge(perms.ob_invoices)}
-      Rpt ${permBadge(perms.ob_reports)}
-    </td>
     <td>
+      <button class="btn btn-sm" style="background:#e0e7ff;color:#3730a3;" onclick="viewUserPerms(${u.row})">View Permissions</button>
       <button class="btn btn-edit btn-sm" onclick="editUser(${u.row})">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.row}, '${u.username}')">Del</button>
     </td>
@@ -591,6 +1277,15 @@ function openUserModal(data) {
   document.getElementById('fUserFullname').value = data ? data.fullname : '';
   document.getElementById('fUserRole').value = data ? data.role : 'User';
   document.getElementById('userModalTitle').textContent = data ? 'Edit User' : 'Add User';
+  // Populate company access checkboxes
+  const compArea = document.getElementById('companyAccessArea');
+  compArea.innerHTML = allCompanies.map(c => {
+    const accessStr = data ? (data.company_access || 'all') : 'all';
+    const checked = (accessStr === 'all' || accessStr.split(',').includes(String(c.id))) ? 'checked' : '';
+    return `<label style="font-size:13px; font-weight:600; color:#475569; display:flex; align-items:center; gap:6px;">
+      <input type="checkbox" name="company_access" value="${c.id}" ${checked}> ${c.name}
+    </label>`;
+  }).join('');
   // Set permission radio buttons
   PERM_KEYS.forEach(key => {
     const val = (data && data.permissions && data.permissions[key]) ? data.permissions[key] : 'Edit';
@@ -605,6 +1300,26 @@ function editUser(row) {
   if (u) openUserModal(u);
 }
 
+function viewUserPerms(row) {
+  const u = allUsers.find(u => u.row === row);
+  if (!u) return;
+  const perms = u.permissions || {};
+  const labels = {
+    sap_reports: 'SAP Reports',
+    payroll_reports: 'Payroll Reports',
+    ob_accounts: 'OB - Clients',
+    ob_orders: 'OB - Orders',
+    ob_invoices: 'OB - Invoices',
+    ob_reports: 'OB - Reports',
+  };
+  let msg = `Permissions for ${u.fullname} (${u.username}):\n\n`;
+  for (const key in labels) {
+    const val = perms[key] || 'Edit';
+    msg += `  ${labels[key]}:  ${val}\n`;
+  }
+  alert(msg);
+}
+
 async function saveUser() {
   const editRow = document.getElementById('userEditRow').value;
   // Collect permission radio button values
@@ -613,12 +1328,17 @@ async function saveUser() {
     const checked = document.querySelector('input[name="perm_' + key + '"]:checked');
     permissions[key] = checked ? checked.value : 'Edit';
   });
+  // Collect company access checkboxes
+  const compChecked = Array.from(document.querySelectorAll('input[name="company_access"]:checked')).map(cb => cb.value);
+  const companyAccess = compChecked.length === allCompanies.length ? 'all' : compChecked.join(',');
+  if (compChecked.length === 0) return alert('Please select at least one company');
   const body = {
     username: document.getElementById('fUserName').value.trim(),
     password: document.getElementById('fUserPass').value.trim(),
     fullname: document.getElementById('fUserFullname').value.trim(),
     role: document.getElementById('fUserRole').value,
     permissions: permissions,
+    company_access: companyAccess,
   };
   if (!body.username || !body.password) return alert('Username and Password are required');
   let result;
@@ -639,28 +1359,56 @@ async function deleteUser(row, username) {
 }
 
 // ── Clients ──────────────────────────────
-async function loadClients() {
-  allClients = await apiFetch('/api/clients') || [];
+let clientSortField = 'name';
+let clientSortAsc = true;
+
+function sortClients(field) {
+  if (clientSortField === field) {
+    clientSortAsc = !clientSortAsc;
+  } else {
+    clientSortField = field;
+    clientSortAsc = true;
+  }
+  renderClients();
+}
+
+function renderClients() {
+  const sorted = [...allClients].sort((a, b) => {
+    const va = (a[clientSortField] || '').toLowerCase();
+    const vb = (b[clientSortField] || '').toLowerCase();
+    return clientSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
   const tbody = document.querySelector('#clientsTable tbody');
-  tbody.innerHTML = allClients.map(c => `<tr>
-    <td>${c.client_id}</td><td>${c.name}</td><td>${c.billing_address || ''}</td>
-    <td>${c.contact_names || ''}</td><td>${c.billing_name || ''}</td><td>${c.billing_email || ''}</td>
+  tbody.innerHTML = sorted.map(c => `<tr>
+    <td>${c.client_id}</td><td>${c.name}</td><td>${c.client_business || ''}</td><td style="white-space:pre-line;">${c.address || ''}</td>
+    <td>${c.contact_names || ''}</td><td>${c.contact_email || ''}</td><td>${c.phone || ''}</td>
     <td>
       <button class="btn btn-edit btn-sm" onclick="editClient(${c.id})">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="deleteClient(${c.id})">Del</button>
     </td>
   </tr>`).join('');
-  document.getElementById('statClients').textContent = allClients.length;
+  // Update sort arrows
+  document.getElementById('sortNameArrow').textContent = clientSortField === 'name' ? (clientSortAsc ? '▲' : '▼') : '';
+  document.getElementById('sortBusinessArrow').textContent = clientSortField === 'client_business' ? (clientSortAsc ? '▲' : '▼') : '';
+  document.getElementById('sortContactArrow').textContent = clientSortField === 'contact_names' ? (clientSortAsc ? '▲' : '▼') : '';
+}
+
+async function loadClients() {
+  allClients = await apiFetch('/api/clients') || [];
+  renderClients();
+  loadStats();
 }
 
 function openClientModal(data) {
   document.getElementById('clientEditId').value = data ? data.id : '';
   document.getElementById('fClientId').value = data ? data.client_id : '';
   document.getElementById('fClientName').value = data ? data.name : '';
-  document.getElementById('fClientAddr').value = data ? data.billing_address : '';
+  document.getElementById('fClientBusiness').value = data ? data.client_business : '';
+  document.getElementById('fClientAddr').value = data ? data.address : '';
   document.getElementById('fClientContact').value = data ? data.contact_names : '';
-  document.getElementById('fClientBillName').value = data ? data.billing_name : '';
-  document.getElementById('fClientEmail').value = data ? data.billing_email : '';
+  document.getElementById('fClientEmail').value = data ? data.contact_email : '';
+  document.getElementById('fClientPhone').value = data ? data.phone : '';
+  document.getElementById('fClientInfo').value = data ? data.general_info : '';
   document.getElementById('clientModalTitle').textContent = data ? 'Edit Client' : 'Add Client';
   openModal('clientModal');
 }
@@ -672,12 +1420,15 @@ async function saveClient() {
   const body = {
     client_id: document.getElementById('fClientId').value,
     name: document.getElementById('fClientName').value,
-    billing_address: document.getElementById('fClientAddr').value,
+    client_business: document.getElementById('fClientBusiness').value,
+    address: document.getElementById('fClientAddr').value,
     contact_names: document.getElementById('fClientContact').value,
-    billing_name: document.getElementById('fClientBillName').value,
-    billing_email: document.getElementById('fClientEmail').value,
+    contact_email: document.getElementById('fClientEmail').value,
+    phone: document.getElementById('fClientPhone').value,
+    general_info: document.getElementById('fClientInfo').value,
   };
-  if (!body.client_id || !body.name) return alert('Client ID and Name are required');
+  if (!body.client_id || !body.name || !body.client_business || !body.address)
+    return alert('Client ID, Name, Business, and Address are required');
   const result = editId ? await apiPut('/api/clients/' + editId, body)
                         : await apiPost('/api/clients', body);
   if (result && result.error) return alert('Error saving client: ' + result.error);
@@ -687,7 +1438,8 @@ async function saveClient() {
 
 async function deleteClient(id) {
   if (!confirm('Delete this client?')) return;
-  await apiDelete('/api/clients/' + id);
+  const result = await apiDelete('/api/clients/' + id);
+  if (result && result.error) return alert(result.error);
   loadClients();
 }
 
@@ -708,7 +1460,7 @@ function openContractTypeModal(data) {
   document.getElementById('ctEditId').value = data ? data.id : '';
   document.getElementById('fCtCategory').value = data ? data.category : 'SaaS';
   document.getElementById('fCtSubcategory').value = data ? data.subcategory : '';
-  document.getElementById('ctModalTitle').textContent = data ? 'Edit Contract Type' : 'Add Contract Type';
+  document.getElementById('ctModalTitle').textContent = data ? 'Edit Order Category' : 'Add Order Category';
   openModal('contractTypeModal');
 }
 
@@ -734,7 +1486,7 @@ async function saveContractType() {
 }
 
 async function deleteContractType(id) {
-  if (!confirm('Delete this contract type?')) return;
+  if (!confirm('Delete this order category?')) return;
   await apiDelete('/api/contract-types/' + id);
   loadContractTypes();
 }
@@ -784,22 +1536,112 @@ async function deleteCompany(id) {
 }
 
 // ── Orders ───────────────────────────────
-async function loadOrders() {
-  allOrders = await apiFetch('/api/orders') || [];
-  const tbody = document.querySelector('#ordersTable tbody');
-  tbody.innerHTML = allOrders.map(o => `<tr style="cursor:pointer;" onclick="openOrderDetail(${o.id})">
-    <td><strong>${o.order_name}</strong></td>
+function _orderRow(o) {
+  const remainMls = o.remaining_mls_year || 0;
+  return `<tr style="cursor:pointer;" onclick="openOrderDetail(${o.id})">
     <td>${o.client_name}</td>
     <td><span class="badge badge-blue">${o.contract_type}</span></td>
+    <td><strong>${o.order_name}</strong></td>
     <td>${o.company_name}</td>
     <td>${o.date_of_order}</td>
     <td>${fmt(o.contract_amount)}</td>
+    <td style="color:${remainMls > 0 ? '#dc2626' : '#16a34a'}; font-weight:600;">${fmt(remainMls)}</td>
     <td>${o.po_number}</td>
     <td><button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteOrder(${o.id})">Del</button></td>
-  </tr>`).join('');
+  </tr>`;
+}
 
-  document.getElementById('statOrders').textContent = allOrders.length;
-  document.getElementById('statValue').textContent = fmt(allOrders.reduce((s,o) => s + o.contract_amount, 0));
+function _subtotalRow(label, count, total, remainTotal) {
+  return `<tr style="background:#eef2ff; font-weight:700; border-top:2px solid #93c5fd;">
+    <td colspan="5" style="text-align:right; padding-right:12px; color:#1e40af;">${label} — ${count} contract${count !== 1 ? 's' : ''}</td>
+    <td style="color:#1e40af;">${fmt(total)}</td>
+    <td style="color:#1e40af;">${fmt(remainTotal)}</td>
+    <td colspan="2"></td>
+  </tr>`;
+}
+
+async function loadOrders() {
+  allOrders = await apiFetch('/api/orders') || [];
+  const subtotalBy = (document.querySelector('input[name="orderSubtotal"]:checked') || {}).value || '';
+
+  // Sort based on subtotal selection
+  let sorted;
+  if (subtotalBy === 'category') {
+    sorted = [...allOrders].sort((a, b) =>
+      (a.contract_type || '').localeCompare(b.contract_type || '') || (a.client_name || '').localeCompare(b.client_name || '')
+    );
+  } else {
+    sorted = [...allOrders].sort((a, b) =>
+      (a.client_name || '').localeCompare(b.client_name || '') || (a.order_name || '').localeCompare(b.order_name || '')
+    );
+  }
+
+  const tbody = document.querySelector('#ordersTable tbody');
+  let html = '';
+
+  if (!subtotalBy) {
+    // No subtotals — just sorted rows
+    html = sorted.map(o => _orderRow(o)).join('');
+  } else {
+    // Group and subtotal
+    const groupKey = subtotalBy === 'category' ? 'contract_type' : 'client_name';
+    let currentGroup = null;
+    let groupTotal = 0;
+    let groupRemain = 0;
+    let groupCount = 0;
+
+    for (const o of sorted) {
+      if (currentGroup !== null && o[groupKey] !== currentGroup) {
+        html += _subtotalRow(currentGroup, groupCount, groupTotal, groupRemain);
+        groupTotal = 0;
+        groupRemain = 0;
+        groupCount = 0;
+      }
+      currentGroup = o[groupKey];
+      groupTotal += o.contract_amount || 0;
+      groupRemain += o.remaining_mls_year || 0;
+      groupCount++;
+      html += _orderRow(o);
+    }
+    if (currentGroup !== null) {
+      html += _subtotalRow(currentGroup, groupCount, groupTotal, groupRemain);
+    }
+  }
+
+  tbody.innerHTML = html;
+  loadStats();
+}
+
+function exportOrdersToExcel() {
+  if (!allOrders || allOrders.length === 0) {
+    alert('No orders to export');
+    return;
+  }
+  const yearLabel = (document.getElementById('remainMlsHeader').textContent || '').replace('Remaining MLS ', '') || new Date().getFullYear();
+  const rows = allOrders.map(o => ({
+    'Client': o.client_name || '',
+    'Category': o.contract_type || '',
+    'Order Name': o.order_name || '',
+    'Company': o.company_name || '',
+    'Date': o.date_of_order || '',
+    'Contract Amount': o.contract_amount || 0,
+    ['Remaining MLS ' + yearLabel]: o.remaining_mls_year || 0,
+    'PO#': o.po_number || '',
+    'Description': o.order_description || '',
+    'Delivery Start': o.delivery_start_date || '',
+    'Order End': o.order_end_date || '',
+    'Estimate': o.is_estimate ? 'Yes' : 'No',
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  // Set column widths
+  ws['!cols'] = [
+    {wch:20}, {wch:18}, {wch:22}, {wch:16}, {wch:12},
+    {wch:16}, {wch:18}, {wch:14}, {wch:30}, {wch:14}, {wch:14}, {wch:10}
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Orders');
+  const today = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, 'Orders_Export_' + today + '.xlsx');
 }
 
 function populateOrderDropdowns() {
@@ -808,7 +1650,7 @@ function populateOrderDropdowns() {
     allClients.map(c => `<option value="${c.id}">${c.client_id} - ${c.name}</option>`).join('');
 
   const typeSel = document.getElementById('fOrderType');
-  typeSel.innerHTML = '<option value="">-- Select Type --</option>' +
+  typeSel.innerHTML = '<option value="">-- Select Category --</option>' +
     allTypes.map(t => `<option value="${t.id}">${t.category} - ${t.subcategory}</option>`).join('');
 
   const compSel = document.getElementById('fOrderCompany');
@@ -824,16 +1666,52 @@ function openOrderModal(data) {
   document.getElementById('fOrderType').value = data ? data.contract_type_id : '';
   document.getElementById('fOrderCompany').value = data ? data.company_id : '';
   document.getElementById('fOrderDate').value = data ? data.date_of_order : '';
-  document.getElementById('fOrderPO').value = data ? data.po_number : '';
+  document.getElementById('fOrderDeliveryStart').value = data ? data.delivery_start_date : '';
+  document.getElementById('fOrderEndDate').value = data ? data.order_end_date : '';
   document.getElementById('fOrderAmount').value = data ? data.contract_amount : '';
-  document.getElementById('orderModalTitle').textContent = data ? 'Edit Order' : 'New Order';
-  document.getElementById('milestonesSection').style.display = data ? 'block' : 'none';
+  document.getElementById('fOrderPO').value = data ? (data.po_number || '') : '';
+  document.getElementById('fOrderDesc').value = data ? data.order_description : '';
+  // Set estimate radio
+  if (data && data.is_estimate === false) {
+    document.getElementById('fOrderEstimateNo').checked = true;
+  } else {
+    document.getElementById('fOrderEstimateYes').checked = true;
+  }
+  document.getElementById('orderModalTitle').textContent = data ? ('Order: ' + data.order_name) : 'New Order';
+
+  // Show/hide sub-tabs and milestone section for existing orders
+  const subTabs = document.getElementById('orderSubTabs');
+  const summaryBox = document.getElementById('orderSummaryBox');
+  const msSection = document.getElementById('milestonesSection');
   if (data) {
+    subTabs.style.display = 'block';
+    summaryBox.style.display = 'block';
+    msSection.style.display = 'block';
     currentOrder = data;
     renderMilestones(data.milestones || []);
     renderNotes(data.notes || []);
     renderPdfLinks(data);
+    renderInvoiceSetup(data);
+    renderOrderInvoices(data);
+    renderOrderReceipts(data);
+    updateOrderSummary(data);
+    // Enforce estimate constraint on milestone type
+    enforceMilestoneEstimateRule(data.is_estimate);
+    // Commission tab — available to all users, non-mandatory
+    const commBtn = document.getElementById('commissionTabBtn');
+    commBtn.style.display = '';
+    loadCommission(data.id);
+    // Update commission banner after loading
+    setTimeout(() => updateCommissionBanner(data.id), 400);
+  } else {
+    subTabs.style.display = 'none';
+    summaryBox.style.display = 'none';
+    msSection.style.display = 'none';
+    document.getElementById('commissionBanner').style.display = 'none';
+    document.getElementById('commissionTabBtn').style.display = 'none';
   }
+  // Always show Order Entry tab first
+  showOrderTab('entry', document.querySelector('.ord-tab'));
   openModal('orderModal');
 }
 
@@ -844,37 +1722,59 @@ async function openOrderDetail(id) {
 
 async function saveOrder() {
   const editId = document.getElementById('orderEditId').value;
-  const body = {
-    client_id: parseInt(document.getElementById('fOrderClient').value),
-    order_name: document.getElementById('fOrderName').value,
-    contract_type_id: parseInt(document.getElementById('fOrderType').value),
-    company_id: parseInt(document.getElementById('fOrderCompany').value),
-    date_of_order: document.getElementById('fOrderDate').value,
-    po_number: document.getElementById('fOrderPO').value,
-    contract_amount: parseFloat(document.getElementById('fOrderAmount').value) || 0,
-  };
-  if (!body.client_id || !body.order_name || !body.contract_type_id || !body.company_id || !body.date_of_order) {
-    return alert('Please fill in all required fields');
+  const isEstimate = document.getElementById('fOrderEstimateYes').checked;
+
+  const clientVal = document.getElementById('fOrderClient').value;
+  const typeVal = document.getElementById('fOrderType').value;
+  const companyVal = document.getElementById('fOrderCompany').value;
+  const dateVal = document.getElementById('fOrderDate').value;
+  const deliveryVal = document.getElementById('fOrderDeliveryStart').value;
+  const endVal = document.getElementById('fOrderEndDate').value;
+  const nameVal = document.getElementById('fOrderName').value.trim();
+  const amountVal = document.getElementById('fOrderAmount').value;
+  const descVal = document.getElementById('fOrderDesc').value;
+  const poVal = document.getElementById('fOrderPO').value.trim();
+
+  if (!clientVal || !nameVal || !typeVal || !companyVal || !dateVal || !deliveryVal || !endVal) {
+    return alert('Please fill in all required fields (Client, Name, Category, Company, all three dates)');
   }
+  if (!amountVal || parseFloat(amountVal) <= 0) {
+    return alert('Please enter a valid Order Total Value greater than 0');
+  }
+
+  const body = {
+    client_id: parseInt(clientVal),
+    order_name: nameVal,
+    contract_type_id: parseInt(typeVal),
+    company_id: parseInt(companyVal),
+    date_of_order: dateVal,
+    delivery_start_date: deliveryVal,
+    order_end_date: endVal,
+    contract_amount: parseFloat(amountVal),
+    is_estimate: isEstimate,
+    order_description: descVal,
+    po_number: poVal,
+  };
+
   let result;
   if (editId) {
     result = await apiPut('/api/orders/' + editId, body);
+    if (!result) return; // error already shown by apiFetch
+    loadOrders();
+    openOrderDetail(editId);
   } else {
     result = await apiPost('/api/orders', body);
-    if (result && result.id) {
-      closeModal('orderModal');
-      loadOrders();
-      openOrderDetail(result.id);
-      return;
-    }
+    if (!result) return; // error already shown by apiFetch
+    closeModal('orderModal');
+    loadOrders();
+    openOrderDetail(result.id);
   }
-  loadOrders();
-  if (editId) openOrderDetail(editId);
 }
 
 async function deleteOrder(id) {
   if (!confirm('Delete this order?')) return;
-  await apiDelete('/api/orders/' + id);
+  const result = await apiDelete('/api/orders/' + id);
+  if (result && result.error) return alert(result.error);
   loadOrders();
 }
 
@@ -895,37 +1795,193 @@ function renderMilestones(milestones) {
     </td>
   </tr>`).join('');
 
-  document.getElementById('milestoneCount').textContent = milestones.length + '/15';
+  document.getElementById('milestoneCount').textContent = milestones.length + '/60';
   if (currentOrder) {
-    const msTotal = milestones.reduce((s,m) => s + m.payment_amount, 0);
-    const diff = currentOrder.contract_amount - msTotal;
+    const msTotal = milestones.reduce((s,m) => s + (parseFloat(m.payment_amount) || 0), 0);
+    const contractAmt = parseFloat(currentOrder.contract_amount) || 0;
+    const diff = contractAmt - msTotal;
     const el = document.getElementById('milestoneDiff');
     if (Math.abs(diff) > 0.01) {
       el.textContent = `Difference: ${fmt(diff)}`;
+      el.className = 'badge badge-amber';
       el.style.display = '';
     } else {
       el.textContent = 'Balanced';
       el.className = 'badge badge-green';
       el.style.display = '';
     }
+    // Update summary banner numbers
+    document.getElementById('msSumTotal').textContent = fmt(contractAmt);
+    document.getElementById('msSumScheduled').textContent = fmt(msTotal);
   }
+  // Reset to collapsed state when milestones are re-rendered
+  msExpanded = false;
+  document.getElementById('msDetailSection').style.display = 'none';
+  document.getElementById('msExpandArrow').style.transform = 'rotate(0deg)';
 }
 
 function openMilestoneForm(data) {
+  // Always re-enable Periodic radio first, then disable only if editing
+  const periodicRadio = document.querySelector('input[name="msMode"][value="periodic"]');
+  if (periodicRadio) {
+    periodicRadio.disabled = false;
+    periodicRadio.parentElement.style.opacity = '1';
+    periodicRadio.parentElement.style.pointerEvents = 'auto';
+  }
+
   document.getElementById('msEditId').value = data ? data.id : '';
   document.getElementById('fMsName').value = data ? data.milestone_name : '';
   document.getElementById('fMsDate').value = data ? data.scheduled_date : '';
   document.getElementById('fMsAmount').value = data ? data.payment_amount : '';
   document.getElementById('fMsType').value = data ? data.milestone_type : 'Estimate';
   document.getElementById('fMsDesc').value = data ? data.description : '';
-  document.getElementById('fMsResched').value = data ? data.rescheduled_date : '';
-  document.getElementById('fMsReason').value = data ? data.rescheduling_reason : '';
+  document.getElementById('fMsResched').value = data ? (data.rescheduled_date || '') : '';
+  document.getElementById('fMsReason').value = data ? (data.rescheduling_reason || '') : '';
   document.getElementById('fMsChangeReason').value = '';
-  document.getElementById('msChangeReasonRow').style.display = data ? 'block' : 'none';
+  // Reset to Standard mode
+  document.querySelector('input[name="msMode"][value="standard"]').checked = true;
+  toggleMsMode();
+  // When editing existing milestone, disable Periodic option
+  if (data && periodicRadio) {
+    periodicRadio.disabled = true;
+    periodicRadio.parentElement.style.opacity = '0.4';
+    periodicRadio.parentElement.style.pointerEvents = 'none';
+  }
+  // Auto-expand the section if editing an existing milestone OR if it has a rescheduled date
+  const shouldExpand = data ? true : false;
+  document.getElementById('msReschedSection').style.display = shouldExpand ? 'block' : 'none';
+  document.getElementById('msReschedLink').textContent = shouldExpand ? '▾ Hide Change Details' : '▸ Reschedule / Edit Details';
+  // Auto-expand the milestone detail section so the table + form are visible
+  msExpanded = true;
+  document.getElementById('msDetailSection').style.display = 'block';
+  document.getElementById('msExpandArrow').style.transform = 'rotate(90deg)';
   document.getElementById('milestoneForm').style.display = 'block';
+  // Scroll the form into view
+  setTimeout(() => {
+    document.getElementById('milestoneForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 100);
 }
 
-function closeMilestoneForm() { document.getElementById('milestoneForm').style.display = 'none'; }
+function closeMilestoneForm() {
+  document.getElementById('milestoneForm').style.display = 'none';
+  // Reset mode to Standard and re-enable Periodic radio
+  const stdRadio = document.querySelector('input[name="msMode"][value="standard"]');
+  if (stdRadio) { stdRadio.checked = true; toggleMsMode(); }
+  const periodicRadio = document.querySelector('input[name="msMode"][value="periodic"]');
+  if (periodicRadio) { periodicRadio.disabled = false; periodicRadio.parentElement.style.opacity = '1'; }
+}
+
+function toggleMsMode() {
+  const mode = document.querySelector('input[name="msMode"]:checked').value;
+  const stdFields = document.getElementById('msStandardFields');
+  const perFields = document.getElementById('msPeriodicFields');
+  const saveBtn = document.getElementById('msSaveBtn');
+  const hint = document.getElementById('msModeHint');
+  if (mode === 'periodic') {
+    stdFields.style.display = 'none';
+    perFields.style.display = 'block';
+    saveBtn.textContent = 'Generate Milestones';
+    saveBtn.setAttribute('onclick', 'savePeriodicMilestones()');
+    hint.textContent = 'Generates multiple milestones automatically';
+    updatePeriodicPreview();
+  } else {
+    stdFields.style.display = 'block';
+    perFields.style.display = 'none';
+    saveBtn.textContent = 'Save Milestone';
+    saveBtn.setAttribute('onclick', 'saveMilestone()');
+    hint.textContent = 'Single milestone entry';
+  }
+}
+
+function getPeriodicDates(startStr, periodType, count) {
+  const dates = [];
+  const start = new Date(startStr + 'T00:00:00');
+  const monthInc = periodType === 'Monthly' ? 1 : periodType === 'Quarterly' ? 3 : periodType === 'Every 6 Months' ? 6 : 12;
+  for (let i = 0; i < count; i++) {
+    const d = new Date(start);
+    d.setMonth(d.getMonth() + (monthInc * i));
+    dates.push(d);
+  }
+  return dates;
+}
+
+function formatPeriodName(periodType, date) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const m = months[date.getMonth()];
+  const y = date.getFullYear();
+  if (periodType === 'Monthly') return `${m} ${y}`;
+  if (periodType === 'Quarterly') {
+    const q = Math.ceil((date.getMonth() + 1) / 3);
+    return `Q${q} ${y}`;
+  }
+  if (periodType === 'Every 6 Months') {
+    const h = date.getMonth() < 6 ? 'H1' : 'H2';
+    return `${h} ${y}`;
+  }
+  return `${y}`;
+}
+
+function updatePeriodicPreview() {
+  const pType = document.getElementById('fMsPeriodType').value;
+  const startDate = document.getElementById('fMsPeriodStart').value;
+  const count = parseInt(document.getElementById('fMsPeriodCount').value) || 0;
+  const amount = parseFloat(document.getElementById('fMsPeriodAmount').value) || 0;
+  const preview = document.getElementById('periodicPreview');
+  if (!startDate || count <= 0) {
+    preview.innerHTML = '<span style="color:#94a3b8;">Fill in start date and number of periods to see preview</span>';
+    return;
+  }
+  const dates = getPeriodicDates(startDate, pType, count);
+  const total = amount * count;
+  let html = `<div style="margin-bottom:6px; font-weight:700; color:#0f3460;">Preview: ${count} ${pType.toLowerCase()} milestones — Total: ${fmt(total)}</div>`;
+  html += '<table style="width:100%; font-size:12px; border-collapse:collapse;">';
+  html += '<tr style="background:#e2e8f0;"><th style="padding:3px 6px; text-align:left;">#</th><th style="padding:3px 6px; text-align:left;">Name</th><th style="padding:3px 6px; text-align:left;">Date</th><th style="padding:3px 6px; text-align:left;">Description</th><th style="padding:3px 6px; text-align:right;">Amount</th></tr>';
+  dates.forEach((d, i) => {
+    const dateStr = d.toISOString().split('T')[0];
+    const periodLabel = formatPeriodName(pType, d);
+    const msName = pType;
+    const desc = `${pType} - ${periodLabel}`;
+    html += `<tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:3px 6px;">${i + 1}</td>
+      <td style="padding:3px 6px;">${msName}</td>
+      <td style="padding:3px 6px;">${dateStr}</td>
+      <td style="padding:3px 6px;">${desc}</td>
+      <td style="padding:3px 6px; text-align:right;">${fmt(amount)}</td>
+    </tr>`;
+  });
+  html += '</table>';
+  preview.innerHTML = html;
+}
+
+async function savePeriodicMilestones() {
+  const orderId = document.getElementById('orderEditId').value;
+  if (!orderId) return alert('Save the order first');
+  const pType = document.getElementById('fMsPeriodType').value;
+  const startDate = document.getElementById('fMsPeriodStart').value;
+  const count = parseInt(document.getElementById('fMsPeriodCount').value) || 0;
+  const amount = parseFloat(document.getElementById('fMsPeriodAmount').value) || 0;
+  const msType = document.getElementById('fMsPeriodMsType').value;
+  if (!startDate) return alert('Start date is required');
+  if (count <= 0) return alert('Number of periods must be at least 1');
+  if (amount <= 0) return alert('Amount per period must be greater than 0');
+  const dates = getPeriodicDates(startDate, pType, count);
+  const milestones = dates.map((d, i) => {
+    const periodLabel = formatPeriodName(pType, d);
+    return {
+      order_id: parseInt(orderId),
+      milestone_name: pType,
+      scheduled_date: d.toISOString().split('T')[0],
+      payment_amount: amount,
+      milestone_type: msType,
+      description: (pType + ' - ' + periodLabel).substring(0, 50),
+    };
+  });
+  if (!confirm(`This will create ${count} milestones (${pType}) totaling ${fmt(amount * count)}. Continue?`)) return;
+  const result = await apiPost('/api/milestones/batch', { order_id: parseInt(orderId), milestones });
+  if (result && result.error) return alert(result.error);
+  closeMilestoneForm();
+  openOrderDetail(orderId);
+}
 
 async function editMilestone(id) {
   const ms = (currentOrder.milestones || []).find(m => m.id === id);
@@ -984,98 +2040,342 @@ async function addNote() {
 
 // ── PDF Uploads ──────────────────────────
 function renderPdfLinks(order) {
-  const cLink = document.getElementById('contractPdfLink');
   const pLink = document.getElementById('poPdfLink');
-  cLink.innerHTML = order.contract_pdf
-    ? `<a href="${API}/api/download/contracts/${order.contract_pdf}" target="_blank" style="color:#0f3460; font-size:12px;">View PDF</a>` : '';
   pLink.innerHTML = order.po_pdf
-    ? `<a href="${API}/api/download/po/${order.po_pdf}" target="_blank" style="color:#0f3460; font-size:12px;">View PDF</a>` : '';
+    ? `<a href="${API}/api/download/po/${order.po_pdf}" target="_blank" style="color:#0f3460; font-size:12px;">View PO PDF</a>` : '';
 }
 
-async function uploadPdf(type) {
-  const inputId = type === 'contracts' ? 'contractPdfInput' : 'poPdfInput';
-  const fileInput = document.getElementById(inputId);
-  if (!fileInput.files.length) return alert('Please select a PDF file');
+function renderInvoiceSetup(order) {
+  document.getElementById('fInvSetupNumber').value = order.invoice_number_prefix || '';
+  document.getElementById('fInvSetupContact').value = order.invoice_contact_name || '';
+  document.getElementById('fInvSetupEmail').value = order.invoice_email || '';
+  document.getElementById('fInvSetupAddr').value = order.invoice_mailing_addr || '';
+  document.getElementById('fInvSetupMethod').value = order.invoice_method || '';
+  document.getElementById('fInvSetupWire').value = order.wire_ach_data || '';
+  const tLink = document.getElementById('invTemplateLink');
+  tLink.innerHTML = order.invoice_template_file
+    ? `<a href="${API}/api/download/invoice_templates/${order.invoice_template_file}" target="_blank" style="color:#0f3460; font-size:12px;">View Template</a>` : '';
+}
+
+async function saveInvoiceSetup() {
   const orderId = document.getElementById('orderEditId').value;
-  const formData = new FormData();
-  formData.append('file', fileInput.files[0]);
-  await fetch(`${API}/api/upload/${type}/${orderId}`, {
-    method: 'POST', body: formData, credentials: 'include'
-  });
+  if (!orderId) return alert('Save the order first');
+  const body = {
+    invoice_number_prefix: document.getElementById('fInvSetupNumber').value,
+    invoice_contact_name: document.getElementById('fInvSetupContact').value,
+    invoice_email: document.getElementById('fInvSetupEmail').value,
+    invoice_mailing_addr: document.getElementById('fInvSetupAddr').value,
+    invoice_method: document.getElementById('fInvSetupMethod').value,
+    wire_ach_data: document.getElementById('fInvSetupWire').value,
+  };
+  await apiPut('/api/orders/' + orderId, body);
   openOrderDetail(orderId);
 }
 
-// ── Invoices ─────────────────────────────
-async function loadInvoices() {
-  const invoices = await apiFetch('/api/invoices') || [];
-  const tbody = document.querySelector('#invoicesTable tbody');
-  tbody.innerHTML = invoices.map(inv => `<tr>
-    <td>${inv.invoice_number}</td>
-    <td>${inv.order_id}</td>
-    <td>${inv.milestone_name}</td>
-    <td>${inv.invoice_date}</td>
-    <td>${fmt(inv.invoice_amount)}</td>
-    <td>${fmt(inv.total_received)}</td>
-    <td>${fmt(inv.balance)}</td>
-    <td><button class="btn btn-success btn-sm" onclick="openReceiptModal(${inv.id}, '${inv.invoice_number}', ${inv.balance})">Record Payment</button></td>
-  </tr>`).join('');
-
-  document.getElementById('statInvoices').textContent = invoices.filter(i => i.balance > 0).length;
-
-  const panel = document.getElementById('panel-invoices');
-  if (!panel.querySelector('#createInvBtn')) {
-    const btn = document.createElement('button');
-    btn.id = 'createInvBtn';
-    btn.className = 'btn btn-primary';
-    btn.textContent = '+ Create Invoice';
-    btn.style.cssText = 'float:right; margin-top:-40px;';
-    btn.onclick = () => openInvoiceModal();
-    panel.querySelector('.section-title').after(btn);
+async function uploadInvTemplate() {
+  const fileInput = document.getElementById('invTemplateInput');
+  if (!fileInput.files.length) return alert('Please select a file');
+  const file = fileInput.files[0];
+  const ext = file.name.toLowerCase();
+  if (!ext.endsWith('.pdf') && !ext.endsWith('.doc') && !ext.endsWith('.docx')) {
+    return alert('Only PDF, DOC, or DOCX files accepted for invoice templates');
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    return alert('File too large. Maximum size is 10MB for invoice templates');
+  }
+  const orderId = document.getElementById('orderEditId').value;
+  if (!orderId) return alert('Please save the order first');
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`${API}/api/upload/invoice_templates/${orderId}`, {
+      method: 'POST', body: formData, credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert('Upload error: ' + (data.error || 'Unknown error'));
+      return;
+    }
+    alert('Invoice template uploaded successfully');
+    openOrderDetail(orderId);
+  } catch(e) {
+    alert('Upload failed: ' + e.message);
   }
 }
 
-async function openInvoiceModal() {
-  const orders = await apiFetch('/api/orders') || [];
-  document.getElementById('fInvOrder').innerHTML = '<option value="">-- Select Order --</option>' +
-    orders.map(o => `<option value="${o.id}">${o.order_name} - ${o.client_name}</option>`).join('');
-  document.getElementById('fInvMilestone').innerHTML = '<option value="">-- Select Milestone --</option>';
-  document.getElementById('fInvNumber').value = '';
-  document.getElementById('fInvDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('fInvAmount').value = '';
-  openModal('invoiceModal');
+function enforceMilestoneEstimateRule(orderIsEstimate) {
+  // If order value is NOT estimate (Actual), milestones cannot be Estimate
+  const msTypeSelect = document.getElementById('fMsType');
+  if (!orderIsEstimate) {
+    // Remove Estimate option, force Confirmed
+    msTypeSelect.innerHTML = '<option value="Confirmed">Confirmed</option>';
+  } else {
+    msTypeSelect.innerHTML = '<option value="Estimate">Estimate</option><option value="Confirmed">Confirmed</option>';
+  }
 }
 
-async function loadMilestonesForInvoice() {
-  const orderId = document.getElementById('fInvOrder').value;
+async function uploadPdf(type) {
+  const fileInput = document.getElementById('poPdfInput');
+  if (!fileInput.files.length) return alert('Please select a PDF file');
+  const file = fileInput.files[0];
+  // Client-side size check: 50MB max for PO
+  const maxMB = 50;
+  if (file.size > maxMB * 1024 * 1024) {
+    return alert('File too large. Maximum size is ' + maxMB + 'MB (up to 80 pages)');
+  }
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
+    return alert('Only PDF files are accepted for Purchase Orders');
+  }
+  const orderId = document.getElementById('orderEditId').value;
+  if (!orderId) return alert('Please save the order first before uploading a PO');
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch(`${API}/api/upload/${type}/${orderId}`, {
+      method: 'POST', body: formData, credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert('Upload error: ' + (data.error || 'Unknown error'));
+      return;
+    }
+    alert('PO uploaded successfully');
+    openOrderDetail(orderId);
+  } catch(e) {
+    alert('Upload failed: ' + e.message);
+  }
+}
+
+// ══════════════════════════════════════════
+// INVOICE PROCESSING TAB
+// ══════════════════════════════════════════
+
+async function loadInvoiceTab() {
+  // Load milestones ready to invoice (easy way)
+  const readyMs = await apiFetch('/api/milestones-ready-to-invoice') || [];
+  const msTbody = document.querySelector('#milestonesToInvoiceTable tbody');
+  if (readyMs.length) {
+    msTbody.innerHTML = readyMs.map(m => {
+      const labelColor = m.due_label === 'Past Due' ? '#dc2626' : m.due_label === 'Due This Week' ? '#d97706' : '#2563eb';
+      return `<tr>
+        <td><span style="color:${labelColor}; font-weight:600; font-size:11px;">${m.due_label}</span></td>
+        <td>${m.client_name}</td>
+        <td>${m.order_name}</td>
+        <td>${m.milestone_name}</td>
+        <td>${m.scheduled_date}</td>
+        <td>${m.milestone_type}</td>
+        <td>${fmt(m.payment_amount)}</td>
+        <td><button class="btn btn-primary btn-sm" onclick="openInvoiceForm(${m.milestone_id}, ${m.order_id}, '${m.milestone_name.replace(/'/g,"\\'")}', ${m.payment_amount}, '${m.milestone_type}', '${m.client_name.replace(/'/g,"\\'")}', '${m.order_name.replace(/'/g,"\\'")}')">Invoice</button></td>
+      </tr>`;
+    }).join('');
+  } else {
+    msTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8; padding:20px;">No milestones due for invoicing right now</td></tr>';
+  }
+
+  // Populate client dropdown for manual selection
+  const clientSel = document.getElementById('fInvClient');
+  clientSel.innerHTML = '<option value="">-- Select Client --</option>' +
+    allClients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+  // Load all invoices list
+  await loadInvoicesList();
+  loadStats();
+}
+
+async function loadInvoicesList() {
+  const invoices = await apiFetch('/api/invoices') || [];
+  const tbody = document.querySelector('#invoicesTable tbody');
+  tbody.innerHTML = invoices.map(inv => {
+    let statusBadge;
+    if (inv.balance <= 0 && inv.total_received > 0) {
+      statusBadge = '<span class="badge badge-green">Paid</span>';
+    } else if (inv.total_received > 0) {
+      statusBadge = '<span class="badge" style="background:#fef3c7;color:#92400e;">Partial</span>';
+    } else {
+      statusBadge = '<span class="badge" style="background:#fee2e2;color:#991b1b;">Unpaid</span>';
+    }
+    return `<tr>
+      <td>${inv.invoice_number}</td>
+      <td>${inv.client_name || ''}</td>
+      <td>${inv.order_name || ''}</td>
+      <td>${inv.milestone_name}</td>
+      <td>${inv.invoice_date}</td>
+      <td>${inv.payment_due_date || ''}</td>
+      <td>${fmt(inv.invoice_amount)}</td>
+      <td>${fmt(inv.total_received)}</td>
+      <td style="font-weight:600; color:${inv.balance > 0 ? '#dc2626' : '#16a34a'};">${fmt(inv.balance)}</td>
+      <td>${statusBadge}</td>
+      <td style="font-size:11px;">${inv.invoiced_by || ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="11" style="text-align:center; color:#94a3b8; padding:20px;">No invoices yet</td></tr>';
+}
+
+// Open the inline invoice form for a selected milestone
+function openInvoiceForm(milestoneId, orderId, msName, msAmount, msType, clientName, orderName) {
+  document.getElementById('fInvMilestoneId').value = milestoneId;
+  document.getElementById('fInvOrderId').value = orderId;
+  document.getElementById('invFormTitle').textContent = 'Create Invoice';
+  document.getElementById('invMilestoneInfo').textContent =
+    `Client: ${clientName}  |  Order: ${orderName}  |  Milestone: ${msName}  |  Type: ${msType}  |  Milestone Amount: ${fmt(msAmount)}`;
+  document.getElementById('fInvNumber').value = '';
+  document.getElementById('fInvAmount').value = msAmount;
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fInvDate').value = today;
+  updateDueDate();
+  document.getElementById('fInvBy').value = currentSession.fullname || currentSession.username || '';
+  document.getElementById('fInvPdfFile').value = '';
+  document.getElementById('invoiceFormSection').style.display = 'block';
+  document.getElementById('invoiceFormSection').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function updateDueDate() {
+  const invDate = document.getElementById('fInvDate').value;
+  if (invDate) {
+    const d = new Date(invDate);
+    d.setDate(d.getDate() + 10);
+    document.getElementById('fInvDueDate').value = d.toISOString().split('T')[0];
+  }
+}
+
+function cancelInvoiceForm() {
+  document.getElementById('invoiceFormSection').style.display = 'none';
+}
+
+// Manual selection: Client → Orders
+async function loadOrdersForInvClient() {
+  const clientId = document.getElementById('fInvClient').value;
+  document.getElementById('fInvOrderManual').innerHTML = '<option value="">-- Select Order --</option>';
+  document.getElementById('fInvMsManual').innerHTML = '<option value="">-- Select Milestone --</option>';
+  if (!clientId) return;
+  const orders = await apiFetch('/api/orders') || [];
+  const filtered = orders.filter(o => o.client_id == clientId);
+  document.getElementById('fInvOrderManual').innerHTML = '<option value="">-- Select Order --</option>' +
+    filtered.map(o => `<option value="${o.id}">${o.order_name}</option>`).join('');
+}
+
+// Manual selection: Order → Milestones
+async function loadMilestonesForInvOrder() {
+  const orderId = document.getElementById('fInvOrderManual').value;
+  document.getElementById('fInvMsManual').innerHTML = '<option value="">-- Select Milestone --</option>';
   if (!orderId) return;
   const order = await apiFetch('/api/orders/' + orderId);
   const unbilled = (order.milestones || []).filter(m => !m.is_billed);
-  document.getElementById('fInvMilestone').innerHTML = '<option value="">-- Select Milestone --</option>' +
-    unbilled.map(m => `<option value="${m.id}" data-amount="${m.payment_amount}">${m.milestone_name} - ${fmt(m.payment_amount)}</option>`).join('');
+  document.getElementById('fInvMsManual').innerHTML = '<option value="">-- Select Milestone --</option>' +
+    unbilled.map(m => `<option value="${m.id}" data-amount="${m.payment_amount}" data-name="${m.milestone_name}" data-type="${m.milestone_type}" data-orderid="${orderId}" data-ordername="${order.order_name}" data-clientname="${order.client_name}">${m.milestone_name} - ${fmt(m.payment_amount)}</option>`).join('');
 }
 
-function prefillInvoiceAmount() {
-  const sel = document.getElementById('fInvMilestone');
+function selectManualMilestone() {
+  const sel = document.getElementById('fInvMsManual');
   const opt = sel.options[sel.selectedIndex];
-  if (opt && opt.dataset.amount) {
-    document.getElementById('fInvAmount').value = opt.dataset.amount;
+  if (opt && opt.value) {
+    openInvoiceForm(
+      parseInt(opt.value),
+      parseInt(opt.dataset.orderid),
+      opt.dataset.name,
+      parseFloat(opt.dataset.amount),
+      opt.dataset.type,
+      opt.dataset.clientname,
+      opt.dataset.ordername
+    );
   }
 }
 
 async function saveInvoice() {
+  const milestoneId = document.getElementById('fInvMilestoneId').value;
+  const invNumber = document.getElementById('fInvNumber').value.trim();
+  const invDate = document.getElementById('fInvDate').value;
+  const dueDate = document.getElementById('fInvDueDate').value;
+  const invAmount = document.getElementById('fInvAmount').value;
+  const invoicedBy = document.getElementById('fInvBy').value.trim();
+
+  if (!milestoneId || !invNumber || !invDate || !invAmount) {
+    return alert('Please fill in Invoice Number, Amount, and Date');
+  }
+
   const body = {
-    milestone_id: parseInt(document.getElementById('fInvMilestone').value),
-    invoice_number: document.getElementById('fInvNumber').value,
-    invoice_date: document.getElementById('fInvDate').value,
-    invoice_amount: parseFloat(document.getElementById('fInvAmount').value) || 0,
+    milestone_id: parseInt(milestoneId),
+    invoice_number: invNumber,
+    invoice_date: invDate,
+    payment_due_date: dueDate || null,
+    invoice_amount: parseFloat(invAmount),
+    invoiced_by: invoicedBy,
   };
-  if (!body.milestone_id || !body.invoice_number || !body.invoice_date) return alert('Please fill all fields');
-  await apiPost('/api/invoices', body);
-  closeModal('invoiceModal');
-  loadInvoices();
+
+  const result = await apiPost('/api/invoices', body);
+  if (!result || result.error) return;
+
+  // Upload PDF if selected
+  const pdfFile = document.getElementById('fInvPdfFile').files[0];
+  if (pdfFile && result.id) {
+    const formData = new FormData();
+    formData.append('file', pdfFile);
+    try {
+      await fetch(`${API}/api/upload/invoices/${result.id}`, {
+        method: 'POST', body: formData, credentials: 'include'
+      });
+    } catch(e) { console.error('PDF upload failed:', e); }
+  }
+
+  cancelInvoiceForm();
+  alert('Invoice created successfully');
+  loadInvoiceTab();
 }
 
-// ── Receipts ─────────────────────────────
+// For backward compatibility with order detail sub-tabs
+async function loadInvoices() { await loadInvoiceTab(); }
+
+// ══════════════════════════════════════════
+// RECEIPTS TAB
+// ══════════════════════════════════════════
+
+async function loadReceiptsTab() {
+  const invoices = await apiFetch('/api/invoices') || [];
+
+  // Unpaid invoices table
+  const unpaidTbody = document.querySelector('#unpaidInvoicesTable tbody');
+  const unpaid = invoices.filter(inv => inv.balance > 0);
+  if (unpaid.length) {
+    unpaidTbody.innerHTML = unpaid.map(inv => `<tr>
+      <td>${inv.invoice_number}</td>
+      <td>${inv.client_name || ''}</td>
+      <td>${inv.order_name || ''}</td>
+      <td>${inv.invoice_date}</td>
+      <td>${inv.payment_due_date || ''}</td>
+      <td>${fmt(inv.invoice_amount)}</td>
+      <td>${fmt(inv.total_received)}</td>
+      <td style="font-weight:600; color:#dc2626;">${fmt(inv.balance)}</td>
+      <td><button class="btn btn-success btn-sm" onclick="openReceiptModal(${inv.id}, '${inv.invoice_number.replace(/'/g,"\\'")}', ${inv.balance})">Record Payment</button></td>
+    </tr>`).join('');
+  } else {
+    unpaidTbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#94a3b8; padding:20px;">All invoices are paid</td></tr>';
+  }
+
+  // All receipts table
+  const rTbody = document.querySelector('#allReceiptsTable tbody');
+  let rRows = '';
+  for (const inv of invoices) {
+    for (const r of (inv.receipts || [])) {
+      const diff = r.receipt_amount - inv.invoice_amount;
+      let sBadge = '';
+      if (Math.abs(diff) < 0.01) sBadge = '<span class="badge badge-green">Paid in Full</span>';
+      else if (diff > 0) sBadge = '<span class="badge" style="background:#dbeafe;color:#1e40af;">Overpayment</span>';
+      else sBadge = '<span class="badge" style="background:#fef3c7;color:#92400e;">Underpayment</span>';
+      rRows += `<tr>
+        <td>${inv.invoice_number}</td>
+        <td>${r.receipt_date}</td>
+        <td>${fmt(inv.invoice_amount)}</td>
+        <td>${fmt(r.receipt_amount)}</td>
+        <td style="font-weight:600; color:${diff >= 0 ? '#16a34a' : '#dc2626'};">${fmt(Math.abs(diff))}</td>
+        <td>${sBadge}</td>
+        <td>${r.receipt_notes || '-'}</td>
+      </tr>`;
+    }
+  }
+  rTbody.innerHTML = rRows || '<tr><td colspan="7" style="text-align:center; color:#94a3b8; padding:20px;">No receipts recorded yet</td></tr>';
+  loadStats();
+}
+
+// ── Receipt Modal ─────────────────────────
 function openReceiptModal(invoiceId, invoiceNum, balance) {
   document.getElementById('fRcptInvoiceId').value = invoiceId;
   document.getElementById('rcptInvoiceInfo').textContent = `Invoice: ${invoiceNum} | Balance: ${fmt(balance)}`;
@@ -1095,10 +2395,527 @@ async function saveReceipt() {
   if (!body.receipt_date || !body.receipt_amount) return alert('Date and Amount required');
   await apiPost('/api/receipts', body);
   closeModal('receiptModal');
-  loadInvoices();
+  loadReceiptsTab();
 }
 
-// ── Reports ──────────────────────────────
+// ── Reports Menu & New Reports ───────────
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let lastNewBookingsData = null;
+let lastBillingPerfData = null;
+let lastCommissionData = null;
+
+// Open report content in a new browser tab
+function openReportTab(title, bodyHtml, extraScripts) {
+  const w = window.open('', '_blank');
+  if (!w) { alert('Please allow pop-ups for this site'); return; }
+  w.document.write(`<!DOCTYPE html><html><head>
+    <meta charset="UTF-8"><title>${title}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin:0; padding:20px 24px; background:#f0f2f5; }
+      .rpt-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+      .rpt-header h2 { font-size:18px; font-weight:700; color:#0f3460; margin:0; }
+      .rpt-header .btns { display:flex; gap:8px; }
+      .rpt-header .btns button { padding:6px 14px; border:none; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500; }
+      .btn-print { background:#0f3460; color:white; }
+      .btn-print:hover { background:#1a4a8a; }
+      .btn-export { background:#22c55e; color:white; }
+      .btn-export:hover { background:#16a34a; }
+      .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+      .data-table th { background:#f1f5f9; padding:8px 12px; text-align:left; font-weight:600; color:#475569; border-bottom:2px solid #e2e8f0; }
+      .data-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; }
+      .data-table tr:hover { background:#f8fafc; }
+      .rpt-month-table { border-collapse:collapse; font-size:12px; width:100%; }
+      .rpt-month-table th, .rpt-month-table td { border:1px solid #e2e8f0; padding:6px 8px; text-align:right; }
+      .rpt-month-table th { background:#f1f5f9; font-weight:600; color:#475569; text-align:center; }
+      .rpt-month-table td:first-child, .rpt-month-table th:first-child { text-align:left; }
+      .rpt-month-table tr:hover { background:#f8fafc; }
+      .rpt-month-table .rpt-total-row td { background:#0f3460; color:white; font-weight:700; }
+      .rpt-month-table .rpt-client-row td { background:#eff6ff; font-weight:600; color:#1e40af; }
+      .rpt-month-table .rpt-sub-header th { background:#dbeafe; font-size:11px; }
+      @media print { .rpt-header .btns { display:none; } body { background:white; } }
+    </style>
+  </head><body>
+    <div class="rpt-header">
+      <h2>${title}</h2>
+      <div class="btns">
+        <button class="btn-print" onclick="window.print()">Print</button>
+      </div>
+    </div>
+    ${bodyHtml}
+    ${extraScripts || ''}
+  </body></html>`);
+  w.document.close();
+}
+
+function selectReport(id, btnEl) {
+  // Hide all report sections
+  document.querySelectorAll('.rpt-section').forEach(s => s.style.display = 'none');
+  // Show selected
+  const sec = document.getElementById('rpt-' + id);
+  if (sec) sec.style.display = '';
+  // Update menu active state
+  document.querySelectorAll('.rpt-menu-btn').forEach(b => b.classList.remove('rpt-menu-active'));
+  if (btnEl) btnEl.classList.add('rpt-menu-active');
+}
+
+// Set default year on report year inputs
+function initReportDefaults() {
+  const yr = new Date().getFullYear();
+  const nbY = document.getElementById('newBookingsYear');
+  const bpY = document.getElementById('billingPerfYear');
+  const crY = document.getElementById('commReportYear');
+  if (nbY && !nbY.value) nbY.value = yr;
+  if (bpY && !bpY.value) bpY.value = yr;
+  if (crY && !crY.value) crY.value = yr;
+}
+
+// ── Report 1: New Bookings by Month ──────
+async function runNewBookingsReport() {
+  const year = document.getElementById('newBookingsYear').value;
+  if (!year) return alert('Enter a year');
+  const data = await apiFetch('/api/reports/new-bookings-by-month?year=' + year);
+  if (!data) return;
+  lastNewBookingsData = data;
+
+  if (!data.rows.length) {
+    document.getElementById('newBookingsResults').innerHTML = '<p style="color:#64748b;">No orders found for ' + year + '.</p>';
+    document.getElementById('exportNewBookingsBtn').style.display = 'none';
+    return;
+  }
+
+  let html = '<div style="overflow-x:auto;"><table class="rpt-month-table">';
+  // Header row with months
+  html += '<thead><tr><th style="min-width:180px;">Client / Order</th>';
+  for (let m = 0; m < 12; m++) html += '<th style="min-width:80px;">' + MONTH_NAMES[m] + '</th>';
+  html += '<th style="min-width:90px;">Total</th></tr></thead><tbody>';
+
+  for (const row of data.rows) {
+    // Client summary row
+    html += '<tr class="rpt-client-row"><td>' + row.client + '</td>';
+    for (let m = 1; m <= 12; m++) {
+      const val = row.month_totals[m] || row.month_totals[String(m)] || 0;
+      html += '<td>' + (val > 0 ? fmt(val) : '') + '</td>';
+    }
+    html += '<td>' + fmt(row.row_total) + '</td></tr>';
+
+    // Individual order rows
+    for (const o of row.orders) {
+      html += '<tr><td style="padding-left:24px; font-size:11px; color:#64748b;">' + o.order_name + '</td>';
+      for (let m = 1; m <= 12; m++) {
+        html += '<td style="font-size:11px;">' + (o.month === m ? fmt(o.amount) : '') + '</td>';
+      }
+      html += '<td style="font-size:11px;">' + fmt(o.amount) + '</td></tr>';
+    }
+  }
+
+  // Grand total row
+  html += '<tr class="rpt-total-row"><td>Grand Total</td>';
+  for (let m = 1; m <= 12; m++) {
+    const val = data.month_totals[m] || data.month_totals[String(m)] || 0;
+    html += '<td>' + (val > 0 ? fmt(val) : '') + '</td>';
+  }
+  html += '<td>' + fmt(data.grand_total) + '</td></tr>';
+  html += '</tbody></table></div>';
+
+  document.getElementById('newBookingsResults').innerHTML = html;
+  document.getElementById('exportNewBookingsBtn').style.display = '';
+
+  // Open in new tab
+  const exportFn = `<script>
+    var data = ${JSON.stringify(data)};
+    var MONTH_NAMES = ${JSON.stringify(MONTH_NAMES)};
+    function exportNB() {
+      var wsData = [['Client / Order']];
+      for (var m=0;m<12;m++) wsData[0].push(MONTH_NAMES[m]);
+      wsData[0].push('Total');
+      for (var r of data.rows) {
+        var row = [r.client];
+        for (var m=1;m<=12;m++) row.push(r.month_totals[m]||r.month_totals[String(m)]||0);
+        row.push(r.row_total); wsData.push(row);
+        for (var o of r.orders) {
+          var or2 = ['  '+o.order_name];
+          for (var m2=1;m2<=12;m2++) or2.push(o.month===m2?o.amount:'');
+          or2.push(o.amount); wsData.push(or2);
+        }
+      }
+      var tr2 = ['Grand Total'];
+      for (var m3=1;m3<=12;m3++) tr2.push(data.month_totals[m3]||data.month_totals[String(m3)]||0);
+      tr2.push(data.grand_total); wsData.push(tr2);
+      var ws=XLSX.utils.aoa_to_sheet(wsData); var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'New Bookings '+data.year);
+      XLSX.writeFile(wb,'NewBookings_'+data.year+'.xlsx');
+    }
+    document.getElementById('expBtn').onclick = exportNB;
+  <\/script>`;
+  openReportTab('New Bookings by Month — ' + year,
+    '<div style="margin-bottom:10px;"><button id="expBtn" class="btn-export">Export Excel</button></div>' + html, exportFn);
+}
+
+function exportNewBookings() {
+  if (!lastNewBookingsData) return;
+  const data = lastNewBookingsData;
+  const wsData = [];
+  // Header
+  const header = ['Client / Order'];
+  for (let m = 0; m < 12; m++) header.push(MONTH_NAMES[m]);
+  header.push('Total');
+  wsData.push(header);
+
+  for (const row of data.rows) {
+    const r = [row.client];
+    for (let m = 1; m <= 12; m++) r.push(row.month_totals[m] || row.month_totals[String(m)] || 0);
+    r.push(row.row_total);
+    wsData.push(r);
+    for (const o of row.orders) {
+      const or = ['  ' + o.order_name];
+      for (let m = 1; m <= 12; m++) or.push(o.month === m ? o.amount : '');
+      or.push(o.amount);
+      wsData.push(or);
+    }
+  }
+  const totalRow = ['Grand Total'];
+  for (let m = 1; m <= 12; m++) totalRow.push(data.month_totals[m] || data.month_totals[String(m)] || 0);
+  totalRow.push(data.grand_total);
+  wsData.push(totalRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'New Bookings ' + data.year);
+  XLSX.writeFile(wb, 'NewBookings_' + data.year + '.xlsx');
+}
+
+// Format days in accounting style: positive = "X Early", negative = "(X) Late"
+function fmtDays(d) {
+  if (d === null || d === undefined || d === '') return '';
+  if (d === 0) return '0';
+  if (d > 0) return d + ' Early';
+  return '(' + Math.abs(d) + ') Late';
+}
+function daysColor(d) {
+  if (d === null || d === undefined || d === '' || d === 0) return '#64748b';
+  return d > 0 ? '#16a34a' : '#dc2626';
+}
+
+// ── Report 2: Billing Performance ────────
+async function runBillingPerfReport() {
+  const year = document.getElementById('billingPerfYear').value;
+  if (!year) return alert('Enter a year');
+  const data = await apiFetch('/api/reports/billing-performance?year=' + year);
+  if (!data) return;
+  lastBillingPerfData = data;
+
+  const summary = data.monthly_summary;
+  const SUB_COLS = 4; // Sched, Inv, Paid, Days
+
+  let html = '<div style="overflow-x:auto;"><table class="rpt-month-table">';
+  // Two-level header
+  html += '<thead><tr><th rowspan="2" style="min-width:100px;">Metric</th>';
+  for (let m = 0; m < 12; m++) html += '<th colspan="' + SUB_COLS + '" style="text-align:center;">' + MONTH_NAMES[m] + '</th>';
+  html += '<th rowspan="2" style="min-width:90px;">Total</th></tr>';
+  html += '<tr class="rpt-sub-header">';
+  for (let m = 0; m < 12; m++) html += '<th>Sched</th><th>Invoiced</th><th>Paid</th><th>Days</th>';
+  html += '</tr></thead><tbody>';
+
+  // Scheduled Amount row
+  html += '<tr><td style="font-weight:600;">Scheduled Amount</td>';
+  let totalSched = 0;
+  for (let m = 1; m <= 12; m++) {
+    const s = summary[m] || summary[String(m)];
+    const val = s ? s.scheduled : 0;
+    totalSched += val;
+    html += '<td>' + (val > 0 ? fmt(val) : '') + '</td><td></td><td></td><td></td>';
+  }
+  html += '<td>' + fmt(totalSched) + '</td></tr>';
+
+  // Invoiced Amount row
+  html += '<tr><td style="font-weight:600;">Invoiced Amount</td>';
+  let totalInv = 0;
+  for (let m = 1; m <= 12; m++) {
+    const s = summary[m] || summary[String(m)];
+    const val = s ? s.invoiced : 0;
+    totalInv += val;
+    html += '<td></td><td>' + (val > 0 ? fmt(val) : '') + '</td><td></td><td></td>';
+  }
+  html += '<td>' + fmt(totalInv) + '</td></tr>';
+
+  // Paid Amount row
+  html += '<tr><td style="font-weight:600;">Paid Amount</td>';
+  let totalPaid = 0;
+  for (let m = 1; m <= 12; m++) {
+    const s = summary[m] || summary[String(m)];
+    const val = s ? s.paid : 0;
+    totalPaid += val;
+    html += '<td></td><td></td><td>' + (val > 0 ? fmt(val) : '') + '</td><td></td>';
+  }
+  html += '<td>' + fmt(totalPaid) + '</td></tr>';
+
+  // Avg Days row
+  html += '<tr><td style="font-weight:600;">Avg Days</td>';
+  for (let m = 1; m <= 12; m++) {
+    const s = summary[m] || summary[String(m)];
+    const d = s ? s.avg_days : null;
+    let dayCell = '';
+    if (d !== null && d !== undefined) {
+      dayCell = '<span style="color:' + daysColor(d) + '; font-weight:600;">' + fmtDays(d) + '</span>';
+    }
+    html += '<td></td><td></td><td></td><td style="text-align:center;">' + dayCell + '</td>';
+  }
+  html += '<td></td></tr>';
+
+  // Difference row (Sched - Inv)
+  html += '<tr style="border-top:2px solid #0f3460;"><td style="font-weight:600;">Difference (Sched - Inv)</td>';
+  for (let m = 1; m <= 12; m++) {
+    const s = summary[m] || summary[String(m)];
+    const diff = s ? (s.scheduled - s.invoiced) : 0;
+    const color = Math.abs(diff) < 0.01 ? '#64748b' : diff > 0 ? '#dc2626' : '#16a34a';
+    html += '<td colspan="' + SUB_COLS + '" style="text-align:center; color:' + color + '; font-weight:600;">' + (diff !== 0 ? fmt(diff) : '') + '</td>';
+  }
+  html += '<td style="font-weight:700;">' + fmt(totalSched - totalInv) + '</td></tr>';
+
+  html += '</tbody></table></div>';
+
+  // ── Order-level detail grid (same monthly format) ──
+  const orderRows = data.order_rows || [];
+  if (orderRows.length) {
+    // Group order rows by client (already sorted by client, order from backend)
+    const clientGroups = [];
+    let curClient = null, curRows = [];
+    for (const r of orderRows) {
+      if (r.client !== curClient) {
+        if (curClient !== null) clientGroups.push({ client: curClient, rows: curRows });
+        curClient = r.client; curRows = [];
+      }
+      curRows.push(r);
+    }
+    if (curClient !== null) clientGroups.push({ client: curClient, rows: curRows });
+
+    html += '<h4 style="margin-top:20px; font-size:14px; font-weight:700; color:#0f3460;">Order Detail (' + orderRows.length + ' orders)</h4>';
+    html += '<div style="overflow-x:auto; max-height:600px; overflow-y:auto; margin-top:8px;"><table class="rpt-month-table" style="font-size:11px;">';
+    // Header
+    html += '<thead style="position:sticky; top:0; z-index:1;"><tr><th rowspan="2" style="min-width:120px;">Client</th><th rowspan="2" style="min-width:140px;">Order</th>';
+    for (let m = 0; m < 12; m++) html += '<th colspan="' + SUB_COLS + '" style="text-align:center;">' + MONTH_NAMES[m] + '</th>';
+    html += '<th colspan="3" style="text-align:center;">Totals</th></tr>';
+    html += '<tr class="rpt-sub-header">';
+    for (let m = 0; m < 12; m++) html += '<th>Sched</th><th>Inv</th><th>Paid</th><th>Days</th>';
+    html += '<th>Sched</th><th>Inv</th><th>Paid</th></tr></thead><tbody>';
+
+    let grandSched = 0, grandInv = 0, grandPaid = 0;
+
+    for (const grp of clientGroups) {
+      let cSched = 0, cInv = 0, cPaid = 0;
+      let cMonths = {};
+      for (let m = 1; m <= 12; m++) cMonths[m] = { scheduled: 0, invoiced: 0, paid: 0 };
+
+      for (const r of grp.rows) {
+        html += '<tr>';
+        html += '<td style="font-weight:500;">' + r.client + '</td>';
+        html += '<td style="font-weight:500;">' + r.order_name + '</td>';
+        for (let m = 1; m <= 12; m++) {
+          const md = r.months[m] || r.months[String(m)] || {};
+          const s = md.scheduled || 0;
+          const i = md.invoiced || 0;
+          const p = md.paid || 0;
+          const d = md.avg_days;
+          cMonths[m].scheduled += s;
+          cMonths[m].invoiced += i;
+          cMonths[m].paid += p;
+          html += '<td>' + (s > 0 ? fmt(s) : '') + '</td>';
+          html += '<td>' + (i > 0 ? fmt(i) : '') + '</td>';
+          html += '<td>' + (p > 0 ? fmt(p) : '') + '</td>';
+          let dayCell = '';
+          if (d !== null && d !== undefined) {
+            dayCell = '<span style="color:' + daysColor(d) + ';">' + fmtDays(d) + '</span>';
+          }
+          html += '<td style="text-align:center;">' + dayCell + '</td>';
+        }
+        html += '<td style="font-weight:600;">' + fmt(r.total_scheduled) + '</td>';
+        html += '<td style="font-weight:600;">' + fmt(r.total_invoiced) + '</td>';
+        html += '<td style="font-weight:600;">' + fmt(r.total_paid) + '</td>';
+        html += '</tr>';
+        cSched += r.total_scheduled;
+        cInv += r.total_invoiced;
+        cPaid += r.total_paid;
+      }
+
+      // Client subtotal row
+      html += '<tr class="rpt-client-row"><td colspan="2" style="text-align:right;">Subtotal: ' + grp.client + '</td>';
+      for (let m = 1; m <= 12; m++) {
+        const cm = cMonths[m];
+        html += '<td>' + (cm.scheduled > 0 ? fmt(cm.scheduled) : '') + '</td>';
+        html += '<td>' + (cm.invoiced > 0 ? fmt(cm.invoiced) : '') + '</td>';
+        html += '<td>' + (cm.paid > 0 ? fmt(cm.paid) : '') + '</td>';
+        html += '<td></td>';
+      }
+      html += '<td style="font-weight:700;">' + fmt(cSched) + '</td>';
+      html += '<td style="font-weight:700;">' + fmt(cInv) + '</td>';
+      html += '<td style="font-weight:700;">' + fmt(cPaid) + '</td>';
+      html += '</tr>';
+      grandSched += cSched;
+      grandInv += cInv;
+      grandPaid += cPaid;
+    }
+
+    // Grand total row
+    html += '<tr class="rpt-total-row"><td colspan="2">Grand Total</td>';
+    for (let m = 1; m <= 12; m++) {
+      const s = summary[m] || summary[String(m)];
+      html += '<td>' + (s && s.scheduled > 0 ? fmt(s.scheduled) : '') + '</td>';
+      html += '<td>' + (s && s.invoiced > 0 ? fmt(s.invoiced) : '') + '</td>';
+      html += '<td>' + (s && s.paid > 0 ? fmt(s.paid) : '') + '</td>';
+      html += '<td></td>';
+    }
+    html += '<td>' + fmt(grandSched) + '</td>';
+    html += '<td>' + fmt(grandInv) + '</td>';
+    html += '<td>' + fmt(grandPaid) + '</td>';
+    html += '</tr>';
+
+    html += '</tbody></table></div>';
+  }
+
+  document.getElementById('billingPerfResults').innerHTML = html;
+  document.getElementById('exportBillingPerfBtn').style.display = '';
+
+  // Open in new tab
+  const bpExportFn = `<script>
+    var data = ${JSON.stringify(data)};
+    var MONTH_NAMES = ${JSON.stringify(MONTH_NAMES)};
+    function exportBP() {
+      var orderRows = data.order_rows || [];
+      if (!orderRows.length) { alert('No detail data to export'); return; }
+      var wsData = [];
+      wsData.push(['Billing Performance Detail — ' + data.year]);
+      wsData.push([]);
+      var dh1=['Client','Order'];var dh2=['',''];
+      for(var m=0;m<12;m++){dh1.push(MONTH_NAMES[m],'','','');dh2.push('Sched','Inv','Paid','Days');}
+      dh1.push('Total Sched','Total Inv','Total Paid');dh2.push('','','');
+      wsData.push(dh1);wsData.push(dh2);
+      var curClient=null,cS=0,cI=0,cP=0,cM={},gS=0,gI=0,gP=0;
+      for(var r of orderRows){
+        if(r.client!==curClient){
+          if(curClient!==null){
+            var sub=['','Subtotal: '+curClient];
+            for(var m=1;m<=12;m++) sub.push(cM[m].s||'',cM[m].i||'',cM[m].p||'','');
+            sub.push(cS,cI,cP);wsData.push(sub);gS+=cS;gI+=cI;gP+=cP;
+          }
+          curClient=r.client;cS=0;cI=0;cP=0;cM={};
+          for(var m=1;m<=12;m++) cM[m]={s:0,i:0,p:0};
+        }
+        var row=[r.client,r.order_name];
+        for(var m=1;m<=12;m++){var md=r.months[m]||r.months[String(m)]||{};
+          var sv=md.scheduled||0,iv=md.invoiced||0,pv=md.paid||0;
+          cM[m].s+=sv;cM[m].i+=iv;cM[m].p+=pv;
+          row.push(sv||'',iv||'',pv||'',md.avg_days!=null?md.avg_days:'');}
+        row.push(r.total_scheduled,r.total_invoiced,r.total_paid);wsData.push(row);
+        cS+=r.total_scheduled;cI+=r.total_invoiced;cP+=r.total_paid;
+      }
+      if(curClient!==null){
+        var sub=['','Subtotal: '+curClient];
+        for(var m=1;m<=12;m++) sub.push(cM[m].s||'',cM[m].i||'',cM[m].p||'','');
+        sub.push(cS,cI,cP);wsData.push(sub);gS+=cS;gI+=cI;gP+=cP;
+      }
+      wsData.push([]);
+      var gt=['','Grand Total'];
+      for(var m=1;m<=12;m++){var s=data.monthly_summary[m]||data.monthly_summary[String(m)]||{};
+        gt.push(s.scheduled||'',s.invoiced||'',s.paid||'','');}
+      gt.push(gS,gI,gP);wsData.push(gt);
+      var ws=XLSX.utils.aoa_to_sheet(wsData);var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,ws,'Billing Detail '+data.year);
+      XLSX.writeFile(wb,'BillingPerformance_'+data.year+'.xlsx');
+    }
+    document.getElementById('expBtn').onclick = exportBP;
+  <\/script>`;
+  openReportTab('Billing Performance — ' + year,
+    '<div style="margin-bottom:10px;"><button id="expBtn" class="btn-export">Export Excel</button></div>' + html, bpExportFn);
+}
+
+function exportBillingPerf() {
+  if (!lastBillingPerfData) return;
+  const data = lastBillingPerfData;
+  const orderRows = data.order_rows || [];
+  if (!orderRows.length) return alert('No detail data to export');
+
+  const wsData = [];
+  wsData.push(['Billing Performance Detail — ' + data.year]);
+  wsData.push([]);
+
+  // Header rows
+  const dh1 = ['Client','Order'];
+  const dh2 = ['',''];
+  for (let m = 0; m < 12; m++) { dh1.push(MONTH_NAMES[m],'','',''); dh2.push('Sched','Inv','Paid','Days'); }
+  dh1.push('Total Sched','Total Inv','Total Paid');
+  dh2.push('','','');
+  wsData.push(dh1); wsData.push(dh2);
+
+  // Group by client
+  let curClient = null;
+  let cSched = 0, cInv = 0, cPaid = 0;
+  let cMonths = {};
+  let grandSched = 0, grandInv = 0, grandPaid = 0;
+
+  for (const r of orderRows) {
+    // When client changes, write subtotal for previous client
+    if (r.client !== curClient) {
+      if (curClient !== null) {
+        const subRow = ['', 'Subtotal: ' + curClient];
+        for (let m = 1; m <= 12; m++) {
+          subRow.push(cMonths[m].scheduled || '', cMonths[m].invoiced || '', cMonths[m].paid || '', '');
+        }
+        subRow.push(cSched, cInv, cPaid);
+        wsData.push(subRow);
+        grandSched += cSched; grandInv += cInv; grandPaid += cPaid;
+      }
+      curClient = r.client;
+      cSched = 0; cInv = 0; cPaid = 0;
+      cMonths = {};
+      for (let m = 1; m <= 12; m++) cMonths[m] = { scheduled: 0, invoiced: 0, paid: 0 };
+    }
+
+    const row = [r.client, r.order_name];
+    for (let m = 1; m <= 12; m++) {
+      const md = r.months[m] || r.months[String(m)] || {};
+      const s = md.scheduled || 0;
+      const i = md.invoiced || 0;
+      const p = md.paid || 0;
+      cMonths[m].scheduled += s;
+      cMonths[m].invoiced += i;
+      cMonths[m].paid += p;
+      row.push(s || '', i || '', p || '', md.avg_days !== null && md.avg_days !== undefined ? md.avg_days : '');
+    }
+    row.push(r.total_scheduled, r.total_invoiced, r.total_paid);
+    wsData.push(row);
+    cSched += r.total_scheduled;
+    cInv += r.total_invoiced;
+    cPaid += r.total_paid;
+  }
+  // Final client subtotal
+  if (curClient !== null) {
+    const subRow = ['', 'Subtotal: ' + curClient];
+    for (let m = 1; m <= 12; m++) {
+      subRow.push(cMonths[m].scheduled || '', cMonths[m].invoiced || '', cMonths[m].paid || '', '');
+    }
+    subRow.push(cSched, cInv, cPaid);
+    wsData.push(subRow);
+    grandSched += cSched; grandInv += cInv; grandPaid += cPaid;
+  }
+
+  // Grand total
+  wsData.push([]);
+  const gtRow = ['', 'Grand Total'];
+  for (let m = 1; m <= 12; m++) {
+    const s = data.monthly_summary[m] || data.monthly_summary[String(m)] || {};
+    gtRow.push(s.scheduled || '', s.invoiced || '', s.paid || '', '');
+  }
+  gtRow.push(grandSched, grandInv, grandPaid);
+  wsData.push(gtRow);
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Billing Detail ' + data.year);
+  XLSX.writeFile(wb, 'BillingPerformance_' + data.year + '.xlsx');
+}
+
+// ── Reports (existing) ──────────────────
 async function runBacklogReport() {
   const month = document.getElementById('backlogMonth').value;
   if (!month) return alert('Select a start month');
@@ -1117,6 +2934,7 @@ async function runBacklogReport() {
     html += '<p class="text-gray-500">No unbilled milestones in this period.</p>';
   }
   document.getElementById('backlogResults').innerHTML = html;
+  openReportTab('Total Backlog — ' + month, html, '');
 }
 
 async function runScheduleReport() {
@@ -1139,6 +2957,541 @@ async function runScheduleReport() {
     html += '<p class="text-gray-500">No milestones in this period.</p>';
   }
   document.getElementById('scheduleResults').innerHTML = html;
+  openReportTab('Milestone Schedule — ' + s + ' to ' + e, html, '');
+}
+
+// ── Commission Functions ─────────────────
+function updateCommTotals() {
+  const s1 = parseFloat(document.getElementById('commSalesPct1').value) || 0;
+  const s2 = parseFloat(document.getElementById('commSalesPct2').value) || 0;
+  const p1 = parseFloat(document.getElementById('commSuppPct1').value) || 0;
+  const p2 = parseFloat(document.getElementById('commSuppPct2').value) || 0;
+  const p3 = parseFloat(document.getElementById('commSuppPct3').value) || 0;
+  const p4 = parseFloat(document.getElementById('commSuppPct4').value) || 0;
+  const salesTotal = s1 + s2;
+  const suppTotal = p1 + p2 + p3 + p4;
+  document.getElementById('commSalesTotal').textContent = salesTotal.toFixed(2);
+  document.getElementById('commSuppTotal').textContent = suppTotal.toFixed(2);
+  document.getElementById('commGrandTotal').textContent = (salesTotal + suppTotal).toFixed(2);
+  // Also update banner if visible
+  const bannerSales = document.getElementById('commBannerSales');
+  if (bannerSales) {
+    bannerSales.textContent = salesTotal.toFixed(2) + '%';
+    document.getElementById('commBannerSupport').textContent = suppTotal.toFixed(2) + '%';
+    const hasComm = salesTotal > 0 || suppTotal > 0;
+    document.getElementById('commBannerAddBtn').style.display = hasComm ? 'none' : '';
+    document.getElementById('commBannerEditBtn').style.display = hasComm ? '' : 'none';
+  }
+}
+
+async function loadCommission(orderId) {
+  // Clear all fields first
+  for (let i = 1; i <= 2; i++) {
+    document.getElementById('commSalesName' + i).value = '';
+    document.getElementById('commSalesPct' + i).value = '';
+  }
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('commSuppName' + i).value = '';
+    document.getElementById('commSuppPct' + i).value = '';
+  }
+  if (!orderId) { updateCommTotals(); return; }
+  const comms = await apiFetch('/api/orders/' + orderId + '/commissions') || [];
+  for (const c of comms) {
+    const prefix = c.commission_type === 'Sales' ? 'commSales' : 'commSupp';
+    const nameEl = document.getElementById(prefix + 'Name' + c.slot_number);
+    const pctEl = document.getElementById(prefix + 'Pct' + c.slot_number);
+    if (nameEl) nameEl.value = c.person_name;
+    if (pctEl) pctEl.value = c.commission_pct || '';
+  }
+  updateCommTotals();
+}
+
+async function saveCommission() {
+  const orderId = document.getElementById('orderEditId').value;
+  if (!orderId) return alert('Save the order first');
+  const entries = [];
+  for (let i = 1; i <= 2; i++) {
+    entries.push({
+      commission_type: 'Sales',
+      slot_number: i,
+      person_name: document.getElementById('commSalesName' + i).value.trim(),
+      commission_pct: parseFloat(document.getElementById('commSalesPct' + i).value) || 0,
+    });
+  }
+  for (let i = 1; i <= 4; i++) {
+    entries.push({
+      commission_type: 'Support',
+      slot_number: i,
+      person_name: document.getElementById('commSuppName' + i).value.trim(),
+      commission_pct: parseFloat(document.getElementById('commSuppPct' + i).value) || 0,
+    });
+  }
+  const result = await apiPut('/api/orders/' + orderId + '/commissions', { entries });
+  if (result && !result.error) {
+    alert('Commission saved successfully');
+    updateCommissionBanner(orderId);
+  }
+}
+
+async function runCommissionReport() {
+  const year = document.getElementById('commReportYear').value;
+  const quarter = document.getElementById('commReportQuarter').value;
+  if (!year) return alert('Enter a year');
+  const includeZero = document.getElementById('commIncludeZero').checked;
+  const includeNoPayment = document.getElementById('commIncludeNoPayment').checked;
+  const data = await apiFetch(`/api/reports/commission?year=${year}&quarter=${quarter}&include_zero=${includeZero}&include_no_payment=${includeNoPayment}`);
+  if (!data) return;
+  lastCommissionData = data;
+  let html = `<div style="display:flex; gap:20px; margin-bottom:12px;">
+    <p class="text-sm font-semibold">Period: Q${data.quarter} ${data.year}</p>
+    <p class="text-sm font-semibold">Total Receipts: ${fmt(data.total_receipts)}</p>
+    <p class="text-sm font-semibold">Total Commissions: ${fmt(data.total_commissions)}</p>
+  </div>`;
+  // Summary table
+  if (data.summary.length) {
+    html += `<h4 style="font-size:13px; font-weight:700; margin-bottom:6px;">Commission Summary</h4>`;
+    html += `<table class="data-table"><thead><tr>
+      <th>Name</th><th>Type</th><th>Rate %</th><th>Receipts Basis</th><th>Commission Earned</th>
+    </tr></thead><tbody>` +
+    data.summary.map(s => `<tr>
+      <td>${s.person_name}</td><td>${s.commission_type}</td>
+      <td>${s.pct}%</td><td>${fmt(s.total_receipts)}</td>
+      <td style="font-weight:700; color:#166534;">${fmt(s.total_commission)}</td>
+    </tr>`).join('') + '</tbody></table>';
+  } else {
+    html += '<p class="text-gray-500">No commissions calculated for this quarter.</p>';
+  }
+  // Detail table (collapsible), sorted by Client then Order Name, subtotals by Client
+  if (data.details.length) {
+    // Sort by client_name, then order_name
+    const sorted = [...data.details].sort((a, b) => {
+      const ca = (a.client_name || '').toLowerCase();
+      const cb = (b.client_name || '').toLowerCase();
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      const oa = (a.order_name || '').toLowerCase();
+      const ob = (b.order_name || '').toLowerCase();
+      return oa < ob ? -1 : oa > ob ? 1 : 0;
+    });
+
+    // Group by client_name
+    const clientGroups = [];
+    let curClient = null;
+    let curRows = [];
+    for (const d of sorted) {
+      if (d.client_name !== curClient) {
+        if (curClient !== null) clientGroups.push({ client: curClient, rows: curRows });
+        curClient = d.client_name;
+        curRows = [];
+      }
+      curRows.push(d);
+    }
+    if (curClient !== null) clientGroups.push({ client: curClient, rows: curRows });
+
+    html += `<div style="margin-top:12px; display:flex; gap:16px; align-items:center;">
+      <a href="javascript:void(0)" onclick="var det=document.getElementById('commDetailDiv'); var isHidden = det.style.display==='none'; det.style.display = isHidden ? 'block' : 'none'; this.textContent = isHidden ? 'Hide Details' : 'Show Details'; var gb = document.getElementById('commGroupByDiv'); if(gb) gb.style.display = isHidden ? 'flex' : 'none';" style="color:#0f3460; font-size:12px; font-weight:600;">Show Details</a>
+      
+      <div id="commGroupByDiv" style="display:none; align-items:center; gap:12px;">
+        <span style="font-size:12px; font-weight:600; color:#475569;">Group By:</span>
+        <label style="font-size:12px; cursor:pointer;"><input type="radio" name="commGroupBy" value="client" checked onclick="document.getElementById('tableClient').style.display=''; document.getElementById('tableIndividual').style.display='none';"> Client</label>
+        <label style="font-size:12px; cursor:pointer;"><input type="radio" name="commGroupBy" value="individual" onclick="document.getElementById('tableClient').style.display='none'; document.getElementById('tableIndividual').style.display='';"> Individual</label>
+      </div>
+
+      <button class="btn btn-success" onclick="exportCommissionDetail()" style="font-size:11px; padding:4px 10px;">Export Detail to Excel</button>
+    </div>
+      <div id="commDetailDiv" style="display:none; margin-top:8px;">
+        <div id="tableClient">
+        <table class="data-table"><thead><tr>
+          <th>Client</th><th>Order Name</th><th>Name</th><th>Type</th><th>Invoice</th>
+          <th>Receipt Date</th><th>Receipt Amt</th><th>Rate</th><th>Commission</th>
+        </tr></thead><tbody>`;
+
+    let grandReceipt = 0, grandCommission = 0;
+    for (const grp of clientGroups) {
+      let subReceipt = 0, subCommission = 0;
+      for (const d of grp.rows) {
+        html += `<tr>
+          <td>${d.client_name}</td><td>${d.order_name}</td>
+          <td>${d.person_name}</td><td>${d.commission_type}</td><td>${d.invoice_number}</td>
+          <td>${d.receipt_date}</td><td style="text-align:right;">${fmt(d.receipt_amount)}</td>
+          <td>${d.commission_pct}%</td>
+          <td style="text-align:right; font-weight:600;">${fmt(d.commission_amount)}</td>
+        </tr>`;
+        subReceipt += d.receipt_amount;
+        subCommission += d.commission_amount;
+      }
+      // Subtotal row for this client
+      html += `<tr style="background:#eff6ff; font-weight:700;">
+        <td colspan="6" style="text-align:right; color:#1e40af;">Subtotal: ${grp.client}</td>
+        <td style="text-align:right; color:#1e40af;">${fmt(subReceipt)}</td>
+        <td></td>
+        <td style="text-align:right; color:#1e40af;">${fmt(subCommission)}</td>
+      </tr>`;
+      grandReceipt += subReceipt;
+      grandCommission += subCommission;
+    }
+    // Grand total row
+    html += `<tr style="background:#0f3460; color:white; font-weight:700;">
+      <td colspan="6" style="text-align:right;">Grand Total</td>
+      <td style="text-align:right;">${fmt(grandReceipt)}</td>
+      <td></td>
+      <td style="text-align:right;">${fmt(grandCommission)}</td>
+    </tr>`;
+
+    html += '</tbody></table></div>';
+    
+    // Add individual grouped table
+    const sortedIndiv = [...data.details].sort((a, b) => {
+      const na = (a.person_name || '').toLowerCase();
+      const nb = (b.person_name || '').toLowerCase();
+      if (na !== nb) return na < nb ? -1 : 1;
+      const ca = (a.client_name || '').toLowerCase();
+      const cb = (b.client_name || '').toLowerCase();
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      const oa = (a.order_name || '').toLowerCase();
+      const ob = (b.order_name || '').toLowerCase();
+      return oa < ob ? -1 : oa > ob ? 1 : 0;
+    });
+
+    const indivGroups = [];
+    let curIndiv = null;
+    let curIndivRows = [];
+    for (const d of sortedIndiv) {
+      if (d.person_name !== curIndiv) {
+        if (curIndiv !== null) indivGroups.push({ name: curIndiv, rows: curIndivRows });
+        curIndiv = d.person_name;
+        curIndivRows = [];
+      }
+      curIndivRows.push(d);
+    }
+    if (curIndiv !== null) indivGroups.push({ name: curIndiv, rows: curIndivRows });
+
+    html += `<div id="tableIndividual" style="display:none;">
+        <table class="data-table"><thead><tr>
+          <th>Name</th><th>Client</th><th>Order Name</th><th>Type</th><th>Invoice</th>
+          <th>Receipt Date</th><th>Receipt Amt</th><th>Rate</th><th>Commission</th>
+        </tr></thead><tbody>`;
+        
+    let grandReceiptIndiv = 0, grandCommissionIndiv = 0;
+    for (const grp of indivGroups) {
+      let subReceipt = 0, subCommission = 0;
+      for (const d of grp.rows) {
+        html += `<tr>
+          <td>${d.person_name}</td><td>${d.client_name}</td><td>${d.order_name}</td>
+          <td>${d.commission_type}</td><td>${d.invoice_number}</td>
+          <td>${d.receipt_date}</td><td style="text-align:right;">${fmt(d.receipt_amount)}</td>
+          <td>${d.commission_pct}%</td>
+          <td style="text-align:right; font-weight:600;">${fmt(d.commission_amount)}</td>
+        </tr>`;
+        subReceipt += d.receipt_amount;
+        subCommission += d.commission_amount;
+      }
+      html += `<tr style="background:#eff6ff; font-weight:700;">
+        <td colspan="6" style="text-align:right; color:#1e40af;">Subtotal: ${grp.name}</td>
+        <td style="text-align:right; color:#1e40af;">${fmt(subReceipt)}</td>
+        <td></td>
+        <td style="text-align:right; color:#1e40af;">${fmt(subCommission)}</td>
+      </tr>`;
+      grandReceiptIndiv += subReceipt;
+      grandCommissionIndiv += subCommission;
+    }
+    html += `<tr style="background:#0f3460; color:white; font-weight:700;">
+      <td colspan="6" style="text-align:right;">Grand Total</td>
+      <td style="text-align:right;">${fmt(grandReceiptIndiv)}</td>
+      <td></td>
+      <td style="text-align:right;">${fmt(grandCommissionIndiv)}</td>
+    </tr>`;
+
+    html += '</tbody></table></div></div>';
+  }
+  document.getElementById('commReportResults').innerHTML = html;
+
+  // Open in new tab — show details expanded
+  let commTabHtml = html.replace('id="commDetailDiv" style="display:none;', 'id="commDetailDiv" style="display:block;').replace('id="commGroupByDiv" style="display:none;', 'id="commGroupByDiv" style="display:flex;');
+  // Remove the duplicate export button so user doesn't click the wrong one in the new tab
+  commTabHtml = commTabHtml.replace(/<button[^>]*onclick="exportCommissionDetail\(\)"[^>]*>.*?<\/button>/g, '');
+
+  const commExportFn = `<script>
+    var data = ${JSON.stringify(data)};
+    function fmt(n){return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n||0);}
+    function exportCD() {
+      try {
+        var groupBy = 'client';
+        var radios = document.getElementsByName('commGroupBy');
+        for(var i=0; i<radios.length; i++) { if(radios[i].checked) groupBy = radios[i].value; }
+        
+        var ws=[];
+        ws.push(['Commission Detail — Q'+data.quarter+' '+data.year]);
+        ws.push([]);
+        
+        if (groupBy === 'individual') {
+          var sorted = data.details.slice().sort(function(a,b){
+            var na=(a.person_name||'').toLowerCase(), nb=(b.person_name||'').toLowerCase();
+            if(na!==nb) return na<nb?-1:1;
+            var ca=(a.client_name||'').toLowerCase(), cb=(b.client_name||'').toLowerCase();
+            if(ca!==cb) return ca<cb?-1:1;
+            var oa=(a.order_name||'').toLowerCase(), ob=(b.order_name||'').toLowerCase();
+            return oa<ob?-1:oa>ob?1:0;
+          });
+          ws.push(['Name','Client','Order Name','Type','Invoice','Receipt Date','Receipt Amt','Rate %','Commission']);
+          var cur=null,sr2=0,sc=0,gr=0,gc=0;
+          for(var d of sorted){
+            if(d.person_name!==cur){
+              if(cur!==null){ws.push(['','','','','','Subtotal: '+cur,sr2,'',sc]);gr+=sr2;gc+=sc;sr2=0;sc=0;}
+              cur=d.person_name;
+            }
+            ws.push([d.person_name,d.client_name,d.order_name,d.commission_type,d.invoice_number,
+                     d.receipt_date,d.receipt_amount,d.commission_pct+'%',d.commission_amount]);
+            sr2+=d.receipt_amount;sc+=d.commission_amount;
+          }
+          if(cur!==null){ws.push(['','','','','','Subtotal: '+cur,sr2,'',sc]);gr+=sr2;gc+=sc;}
+          ws.push([]);ws.push(['','','','','','Grand Total',gr,'',gc]);
+        } else {
+        var sorted = data.details.slice().sort(function(a,b){
+          var ca=(a.client_name||'').toLowerCase(), cb=(b.client_name||'').toLowerCase();
+          if(ca!==cb) return ca<cb?-1:1;
+          var oa=(a.order_name||'').toLowerCase(), ob=(b.order_name||'').toLowerCase();
+          return oa<ob?-1:oa>ob?1:0;
+        });
+        ws.push(['Client','Order Name','Name','Type','Invoice','Receipt Date','Receipt Amt','Rate %','Commission']);
+        var cur=null,sr2=0,sc=0,gr=0,gc=0;
+        for(var d of sorted){
+          if(d.client_name!==cur){
+            if(cur!==null){ws.push(['','','','','','Subtotal: '+cur,sr2,'',sc]);gr+=sr2;gc+=sc;sr2=0;sc=0;}
+            cur=d.client_name;
+          }
+          ws.push([d.client_name,d.order_name,d.person_name,d.commission_type,d.invoice_number,
+                   d.receipt_date,d.receipt_amount,d.commission_pct+'%',d.commission_amount]);
+          sr2+=d.receipt_amount;sc+=d.commission_amount;
+        }
+        if(cur!==null){ws.push(['','','','','','Subtotal: '+cur,sr2,'',sc]);gr+=sr2;gc+=sc;}
+        ws.push([]);ws.push(['','','','','','Grand Total',gr,'',gc]);
+      }
+      
+      var sheet=XLSX.utils.aoa_to_sheet(ws);var wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,sheet,'Commission Q'+data.quarter+' '+data.year);
+      XLSX.writeFile(wb,'CommissionDetail_Q'+data.quarter+'_'+data.year+'.xlsx');
+      } catch (e) { alert("Export error: " + e.message); }
+    }
+    document.getElementById('expBtn').onclick = exportCD;
+  <\/script>`;
+  openReportTab('Quarterly Commission — Q' + quarter + ' ' + year,
+    '<div style="margin-bottom:10px;"><button id="expBtn" class="btn-export">Export Detail to Excel</button></div>' + commTabHtml, commExportFn);
+}
+
+function exportCommissionDetail() {
+  try {
+  if (!lastCommissionData || !lastCommissionData.details.length) return alert('No data to export');
+  const data = lastCommissionData;
+  let groupBy = 'client';
+  const radios = document.getElementsByName('commGroupBy');
+  for(let i=0; i<radios.length; i++) { if(radios[i].checked) groupBy = radios[i].value; }
+
+  const wsData = [];
+  wsData.push(['Commission Detail — Q' + data.quarter + ' ' + data.year]);
+  wsData.push([]);
+  
+  if (groupBy === 'individual') {
+    const sorted = [...data.details].sort((a, b) => {
+      const na = (a.person_name || '').toLowerCase();
+      const nb = (b.person_name || '').toLowerCase();
+      if (na !== nb) return na < nb ? -1 : 1;
+      const ca = (a.client_name || '').toLowerCase();
+      const cb = (b.client_name || '').toLowerCase();
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      const oa = (a.order_name || '').toLowerCase();
+      const ob = (b.order_name || '').toLowerCase();
+      return oa < ob ? -1 : oa > ob ? 1 : 0;
+    });
+
+    wsData.push(['Name','Client','Order Name','Type','Invoice','Receipt Date','Receipt Amt','Rate %','Commission']);
+    let curIndiv = null;
+    let subReceipt = 0, subCommission = 0;
+    let grandReceipt = 0, grandCommission = 0;
+
+    for (const d of sorted) {
+      if (d.person_name !== curIndiv) {
+        if (curIndiv !== null) {
+          wsData.push(['','','','','','Subtotal: ' + curIndiv, subReceipt, '', subCommission]);
+          grandReceipt += subReceipt; grandCommission += subCommission;
+          subReceipt = 0; subCommission = 0;
+        }
+        curIndiv = d.person_name;
+      }
+      wsData.push([d.person_name, d.client_name, d.order_name, d.commission_type, d.invoice_number,
+                   d.receipt_date, d.receipt_amount, d.commission_pct + '%', d.commission_amount]);
+      subReceipt += d.receipt_amount;
+      subCommission += d.commission_amount;
+    }
+    if (curIndiv !== null) {
+      wsData.push(['','','','','','Subtotal: ' + curIndiv, subReceipt, '', subCommission]);
+      grandReceipt += subReceipt; grandCommission += subCommission;
+    }
+    wsData.push([]);
+    wsData.push(['','','','','','Grand Total', grandReceipt, '', grandCommission]);
+
+  } else {
+    // Sort by client then order
+    const sorted = [...data.details].sort((a, b) => {
+      const ca = (a.client_name || '').toLowerCase();
+      const cb = (b.client_name || '').toLowerCase();
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      const oa = (a.order_name || '').toLowerCase();
+      const ob = (b.order_name || '').toLowerCase();
+      return oa < ob ? -1 : oa > ob ? 1 : 0;
+    });
+
+    wsData.push(['Client','Order Name','Name','Type','Invoice','Receipt Date','Receipt Amt','Rate %','Commission']);
+
+    // Group by client for subtotals
+    let curClient = null;
+    let subReceipt = 0, subCommission = 0;
+    let grandReceipt = 0, grandCommission = 0;
+
+    for (const d of sorted) {
+      if (d.client_name !== curClient) {
+        if (curClient !== null) {
+          wsData.push(['','','','','','Subtotal: ' + curClient, subReceipt, '', subCommission]);
+          grandReceipt += subReceipt;
+          grandCommission += subCommission;
+          subReceipt = 0; subCommission = 0;
+        }
+        curClient = d.client_name;
+      }
+      wsData.push([d.client_name, d.order_name, d.person_name, d.commission_type, d.invoice_number,
+                   d.receipt_date, d.receipt_amount, d.commission_pct + '%', d.commission_amount]);
+      subReceipt += d.receipt_amount;
+      subCommission += d.commission_amount;
+    }
+    if (curClient !== null) {
+      wsData.push(['','','','','','Subtotal: ' + curClient, subReceipt, '', subCommission]);
+      grandReceipt += subReceipt;
+      grandCommission += subCommission;
+    }
+    wsData.push([]);
+    wsData.push(['','','','','','Grand Total', grandReceipt, '', grandCommission]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Commission Q' + data.quarter + ' ' + data.year);
+  XLSX.writeFile(wb, 'CommissionDetail_Q' + data.quarter + '_' + data.year + '.xlsx');
+  } catch (err) { alert("Export error: " + err.message); }
+}
+
+// ── Order Sub-Tab: Invoices ──────────────
+async function renderOrderInvoices(order) {
+  const allInvoices = await apiFetch('/api/invoices') || [];
+  const orderInvoices = allInvoices.filter(inv => inv.order_id === order.id);
+  const tbody = document.querySelector('#orderInvoicesTable tbody');
+  tbody.innerHTML = orderInvoices.map(inv => `<tr>
+    <td>${inv.invoice_number}</td>
+    <td>${inv.milestone_name}</td>
+    <td>${inv.invoice_date}</td>
+    <td>${fmt(inv.invoice_amount)}</td>
+    <td>${fmt(inv.total_received)}</td>
+    <td style="font-weight:600; color:${inv.balance > 0 ? '#dc2626' : '#16a34a'};">${fmt(inv.balance)}</td>
+    <td>${inv.invoice_pdf ? '<a href="' + API + '/api/download/invoices/' + inv.invoice_pdf + '" target="_blank" style="color:#0f3460;">View</a>' : '-'}</td>
+  </tr>`).join('') || '<tr><td colspan="7" style="text-align:center; color:#94a3b8; padding:20px;">No invoices yet</td></tr>';
+}
+
+function openInvoiceModalForOrder() {
+  const orderId = document.getElementById('orderEditId').value;
+  if (!orderId) return alert('Save the order first');
+  const order = currentOrder;
+  // Navigate to Invoices tab and show the invoice form
+  const btn = document.querySelectorAll('.tab-btn')[2]; // Invoices tab
+  showTab('invoices', btn);
+  // Show manual selection with the order pre-selected
+  setTimeout(() => {
+    const unbilled = (order.milestones || []).filter(m => !m.is_billed);
+    if (unbilled.length === 0) { alert('No unbilled milestones for this order'); return; }
+    alert('Please select a milestone from the Invoices tab to create an invoice');
+  }, 300);
+}
+
+// ── Order Sub-Tab: Receipts ─────────────
+async function renderOrderReceipts(order) {
+  const allInvoices = await apiFetch('/api/invoices') || [];
+  const orderInvoices = allInvoices.filter(inv => inv.order_id === order.id);
+  const tbody = document.querySelector('#orderReceiptsTable tbody');
+  let rows = '';
+  for (const inv of orderInvoices) {
+    const receipts = inv.receipts || [];
+    for (const r of receipts) {
+      const diff = r.receipt_amount - inv.invoice_amount;
+      let statusBadge = '';
+      if (Math.abs(diff) < 0.01) {
+        statusBadge = '<span class="badge badge-green">Paid in Full</span>';
+      } else if (diff > 0) {
+        statusBadge = '<span class="badge" style="background:#dbeafe;color:#1e40af;">Overpayment</span>';
+      } else {
+        statusBadge = '<span class="badge" style="background:#fef3c7;color:#92400e;">Underpayment</span>';
+      }
+      rows += `<tr>
+        <td>${inv.invoice_number}</td>
+        <td>${r.receipt_date}</td>
+        <td>${fmt(inv.invoice_amount)}</td>
+        <td>${fmt(r.receipt_amount)}</td>
+        <td style="font-weight:600; color:${diff >= 0 ? '#16a34a' : '#dc2626'};">${fmt(Math.abs(diff))}</td>
+        <td>${statusBadge}</td>
+        <td>${r.receipt_notes || '-'}</td>
+      </tr>`;
+    }
+  }
+  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center; color:#94a3b8; padding:20px;">No receipts yet</td></tr>';
+}
+
+// ── Milestone Expand/Collapse ─────────────
+let msExpanded = false;
+
+function toggleMilestoneExpand() {
+  msExpanded = !msExpanded;
+  document.getElementById('msDetailSection').style.display = msExpanded ? 'block' : 'none';
+  document.getElementById('msExpandArrow').style.transform = msExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+// ── Commission Banner Update ─────────────
+function updateCommissionBanner(orderId) {
+  const banner = document.getElementById('commissionBanner');
+  if (!banner || !orderId) return;
+  banner.style.display = 'block';
+  // Read current totals from the commission fields (they are loaded by loadCommission)
+  setTimeout(() => {
+    const s1 = parseFloat(document.getElementById('commSalesPct1').value) || 0;
+    const s2 = parseFloat(document.getElementById('commSalesPct2').value) || 0;
+    const p1 = parseFloat(document.getElementById('commSuppPct1').value) || 0;
+    const p2 = parseFloat(document.getElementById('commSuppPct2').value) || 0;
+    const p3 = parseFloat(document.getElementById('commSuppPct3').value) || 0;
+    const p4 = parseFloat(document.getElementById('commSuppPct4').value) || 0;
+    const salesTotal = s1 + s2;
+    const suppTotal = p1 + p2 + p3 + p4;
+    document.getElementById('commBannerSales').textContent = salesTotal.toFixed(2) + '%';
+    document.getElementById('commBannerSupport').textContent = suppTotal.toFixed(2) + '%';
+    // Show Edit instead of Add if commission data exists
+    const hasComm = salesTotal > 0 || suppTotal > 0;
+    document.getElementById('commBannerAddBtn').style.display = hasComm ? 'none' : '';
+    document.getElementById('commBannerEditBtn').style.display = hasComm ? '' : 'none';
+  }, 300);
+}
+
+// ── Order Summary ────────────────────────
+function updateOrderSummary(order) {
+  const milestones = order.milestones || [];
+  const msTotal = milestones.reduce((s,m) => s + (parseFloat(m.payment_amount) || 0), 0);
+  const contractAmt = parseFloat(order.contract_amount) || 0;
+  const diff = contractAmt - msTotal;
+  document.getElementById('sumContractAmt').textContent = fmt(contractAmt);
+  document.getElementById('sumMsTotal').textContent = fmt(msTotal);
+  const diffEl = document.getElementById('sumDiff');
+  diffEl.textContent = fmt(diff);
+  diffEl.style.color = Math.abs(diff) < 0.01 ? '#16a34a' : '#dc2626';
+  // Total invoiced from actual invoices, not just billed milestones
+  const invoicedTotal = milestones.filter(m => m.is_billed).reduce((s,m) => s + (parseFloat(m.payment_amount) || 0), 0);
+  document.getElementById('sumInvoiced').textContent = fmt(invoicedTotal);
+
+  // Update milestone summary banner numbers
+  document.getElementById('msSumTotal').textContent = fmt(contractAmt);
+  document.getElementById('msSumScheduled').textContent = fmt(msTotal);
 }
 
 // ── Start ────────────────────────────────

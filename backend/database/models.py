@@ -20,14 +20,16 @@ Base = declarative_base()
 class Client(Base):
     __tablename__ = "clients"
 
-    id            = Column(Integer, primary_key=True, autoincrement=True)
-    client_id     = Column(String(8), unique=True, nullable=False)
-    name          = Column(String(255), nullable=False)
-    billing_address = Column(String(500), default="")
-    contact_names = Column(String(500), default="")
-    billing_name  = Column(String(255), default="")
-    billing_email = Column(String(255), default="")
-    created_date  = Column(DateTime, default=datetime.utcnow)
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    client_id       = Column(String(8), unique=True, nullable=False)
+    name            = Column(String(255), nullable=False)
+    client_business = Column(String(50), nullable=False, default="")
+    address         = Column(Text, default="")
+    contact_names   = Column(String(500), default="")
+    contact_email   = Column(String(255), default="")
+    phone           = Column(String(30), default="")
+    general_info    = Column(String(80), default="")
+    created_date    = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     orders = relationship("Order", back_populates="client", cascade="all, delete-orphan")
@@ -37,10 +39,12 @@ class Client(Base):
             "id": self.id,
             "client_id": self.client_id,
             "name": self.name,
-            "billing_address": self.billing_address,
+            "client_business": self.client_business,
+            "address": self.address,
             "contact_names": self.contact_names,
-            "billing_name": self.billing_name,
-            "billing_email": self.billing_email,
+            "contact_email": self.contact_email,
+            "phone": self.phone,
+            "general_info": self.general_info,
             "created_date": self.created_date.isoformat() if self.created_date else None,
         }
 
@@ -81,14 +85,26 @@ class Order(Base):
 
     id               = Column(Integer, primary_key=True, autoincrement=True)
     client_id        = Column(Integer, ForeignKey("clients.id"), nullable=False)
-    order_name       = Column(String(12), nullable=False)
+    order_name       = Column(String(25), nullable=False)
     contract_type_id = Column(Integer, ForeignKey("contract_types.id"), nullable=False)
     company_id       = Column(Integer, ForeignKey("companies.id"), nullable=False)
     date_of_order    = Column(DateTime, nullable=False)
+    delivery_start_date = Column(DateTime, nullable=True)
+    order_end_date   = Column(DateTime, nullable=True)
     po_number        = Column(String(100), default="")
     contract_amount  = Column(Numeric(12, 2), nullable=False, default=0)
+    is_estimate      = Column(Boolean, default=True)
+    order_description = Column(String(80), default="")
     contract_pdf     = Column(String(255), default="")
     po_pdf           = Column(String(255), default="")
+    # Invoice Setup fields (section 3.2 — one-time per order)
+    invoice_template_file = Column(String(255), default="")
+    invoice_number_prefix = Column(String(15), default="")
+    invoice_contact_name  = Column(String(255), default="")
+    invoice_mailing_addr  = Column(String(500), default="")
+    invoice_email         = Column(String(255), default="")
+    invoice_method        = Column(String(50), default="")  # Email, Post, Others
+    wire_ach_data         = Column(String(500), default="")
     is_deleted       = Column(Boolean, default=False)
     created_date     = Column(DateTime, default=datetime.utcnow)
     last_modified    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -100,6 +116,7 @@ class Order(Base):
     company       = relationship("Company")
     milestones    = relationship("Milestone", back_populates="order", cascade="all, delete-orphan")
     notes         = relationship("OrderNote", back_populates="order", cascade="all, delete-orphan")
+    commissions   = relationship("OrderCommission", back_populates="order", cascade="all, delete-orphan")
 
     def to_dict(self, include_related=False):
         d = {
@@ -114,10 +131,22 @@ class Order(Base):
             "company_id": self.company_id,
             "company_name": self.company.name if self.company else "",
             "date_of_order": self.date_of_order.strftime("%Y-%m-%d") if self.date_of_order else "",
+            "delivery_start_date": self.delivery_start_date.strftime("%Y-%m-%d") if self.delivery_start_date else "",
+            "order_end_date": self.order_end_date.strftime("%Y-%m-%d") if self.order_end_date else "",
             "po_number": self.po_number or "",
             "contract_amount": float(self.contract_amount) if self.contract_amount else 0,
+            "is_estimate": self.is_estimate if self.is_estimate is not None else True,
+            "order_description": self.order_description or "",
             "contract_pdf": self.contract_pdf or "",
             "po_pdf": self.po_pdf or "",
+            # Invoice setup
+            "invoice_template_file": self.invoice_template_file or "",
+            "invoice_number_prefix": self.invoice_number_prefix or "",
+            "invoice_contact_name": self.invoice_contact_name or "",
+            "invoice_mailing_addr": self.invoice_mailing_addr or "",
+            "invoice_email": self.invoice_email or "",
+            "invoice_method": self.invoice_method or "",
+            "wire_ach_data": self.wire_ach_data or "",
             "created_date": self.created_date.isoformat() if self.created_date else None,
             "created_by": self.created_by,
         }
@@ -156,7 +185,7 @@ class Milestone(Base):
 
     id                  = Column(Integer, primary_key=True, autoincrement=True)
     order_id            = Column(Integer, ForeignKey("orders.id"), nullable=False)
-    milestone_name      = Column(String(12), nullable=False)
+    milestone_name      = Column(String(25), nullable=False)
     scheduled_date      = Column(DateTime, nullable=False)
     payment_amount      = Column(Numeric(12, 2), nullable=False, default=0)
     milestone_type      = Column(String(20), nullable=False, default="Estimate")  # Estimate or Confirmed
@@ -215,6 +244,30 @@ class MilestoneAudit(Base):
         }
 
 
+class OrderCommission(Base):
+    __tablename__ = "order_commissions"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    order_id      = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    commission_type = Column(String(20), nullable=False)   # "Sales" or "Support"
+    person_name   = Column(String(255), nullable=False, default="")
+    commission_pct = Column(Numeric(5, 2), nullable=False, default=0)
+    slot_number   = Column(Integer, nullable=False, default=1)  # 1-2 for Sales, 1-4 for Support
+    created_date  = Column(DateTime, default=datetime.utcnow)
+
+    order = relationship("Order", back_populates="commissions")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "order_id": self.order_id,
+            "commission_type": self.commission_type,
+            "person_name": self.person_name,
+            "commission_pct": float(self.commission_pct) if self.commission_pct else 0,
+            "slot_number": self.slot_number,
+        }
+
+
 class Invoice(Base):
     __tablename__ = "invoices"
 
@@ -223,7 +276,9 @@ class Invoice(Base):
     milestone_id   = Column(Integer, ForeignKey("milestones.id"), nullable=False)
     invoice_number = Column(String(100), unique=True, nullable=False)
     invoice_date   = Column(DateTime, nullable=False)
+    payment_due_date = Column(DateTime, nullable=True)
     invoice_amount = Column(Numeric(12, 2), nullable=False)
+    invoiced_by    = Column(String(100), default="")
     invoice_pdf    = Column(String(255), default="")
     created_date   = Column(DateTime, default=datetime.utcnow)
     created_by     = Column(String(100), nullable=False)
@@ -241,10 +296,13 @@ class Invoice(Base):
             "milestone_name": self.milestone.milestone_name if self.milestone else "",
             "invoice_number": self.invoice_number,
             "invoice_date": self.invoice_date.strftime("%Y-%m-%d") if self.invoice_date else "",
+            "payment_due_date": self.payment_due_date.strftime("%Y-%m-%d") if self.payment_due_date else "",
             "invoice_amount": float(self.invoice_amount) if self.invoice_amount else 0,
+            "invoiced_by": self.invoiced_by or "",
             "invoice_pdf": self.invoice_pdf or "",
             "total_received": total_received,
             "balance": float(self.invoice_amount or 0) - total_received,
+            "receipts": [r.to_dict() for r in self.receipts],
         }
 
 

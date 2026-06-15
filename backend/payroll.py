@@ -47,6 +47,12 @@ async def favicon():
 async def sap_index(request: Request):
     session = get_session_from_request(request)
     if session:
+        perms = session.get("permissions", {})
+        # If SAP Reports is hidden, redirect to first available tab
+        if perms.get("sap_reports") == "Hidden":
+            if perms.get("payroll_reports") != "Hidden":
+                return RedirectResponse(url="/payroll")
+            return RedirectResponse(url="/orders")
         html = portal.main_page(session)
         return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
     return RedirectResponse(url="/login")
@@ -88,6 +94,10 @@ async def get_payroll_tab(request: Request):
     session = get_session_from_request(request)
     if not session:
         return RedirectResponse(url="/login")
+    # If Payroll is hidden for this user, redirect to orders
+    perms = session.get("permissions", {})
+    if perms.get("payroll_reports") == "Hidden":
+        return RedirectResponse(url="/orders")
     html = portal.payroll_tab_page(session)
     return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
 
@@ -97,6 +107,16 @@ async def get_orders_tab(request: Request):
     if not session:
         return RedirectResponse(url="/login")
     html = portal.orders_tab_page(session)
+    return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
+
+@app.get("/admin")
+async def get_admin_tab(request: Request):
+    session = get_session_from_request(request)
+    if not session:
+        return RedirectResponse(url="/login")
+    if session.get("role") != "Admin":
+        return RedirectResponse(url="/")
+    html = portal.admin_tab_page(session)
     return HTMLResponse(content=html.encode("utf-8"), media_type="text/html; charset=utf-8")
 
 async def _do_upload(request: Request, file: UploadFile):
@@ -194,6 +214,33 @@ async def download_input_file(request: Request, filename: str):
                                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     raise HTTPException(status_code=404, detail=f"Input file not found: {decoded}")
 
+
+@app.delete("/delete-input/{filename}")
+async def delete_input_file(request: Request, filename: str):
+    """Delete an input Excel file — Admin only. Searches SAP Reports/Input Files/ recursively."""
+    session = get_session_from_request(request)
+    if not session:
+        raise HTTPException(status_code=401, detail="Not logged in")
+    if session.get("role") != "Admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    decoded = urllib.parse.unquote(filename)
+    for root, dirs, files in os.walk(portal.INPUT_DIR):
+        if decoded in files:
+            full_path = os.path.join(root, decoded)
+            os.remove(full_path)
+            # Also remove from processing tracker so it won't appear in logs
+            try:
+                import process_reports
+                tracker = process_reports.load_tracker(portal.SAP_DIR)
+                if decoded in tracker:
+                    del tracker[decoded]
+                    process_reports.save_tracker(portal.SAP_DIR, tracker)
+            except Exception:
+                pass  # Tracker cleanup is best-effort
+            return {"success": True, "deleted": decoded}
+    raise HTTPException(status_code=404, detail=f"Input file not found: {decoded}")
+
+
 @app.get("/download-sap/{rel_path:path}")
 async def download_sap(request: Request, rel_path: str):
     if not get_session_from_request(request):
@@ -236,11 +283,14 @@ def _read_user_row(row, idx):
     for key, col_idx in PERM_COL_MAP.items():
         val = str(row[col_idx - 1]).strip() if len(row) >= col_idx and row[col_idx - 1] else "Edit"
         perms[key] = val
+    # Column K (index 10) = company_access — comma-separated company IDs, e.g. "1,2"
+    company_access = str(row[10]).strip() if len(row) > 10 and row[10] else "all"
     return {
         "row": idx, "username": str(row[0]), "password": str(row[1]),
         "fullname": str(row[2]) if row[2] else "",
         "role": str(row[3]) if row[3] else "User",
         "permissions": perms,
+        "company_access": company_access,
     }
 
 @app.get("/api/users")
@@ -266,6 +316,7 @@ async def get_session_info(request: Request):
         "fullname": session.get("fullname", ""),
         "role": session.get("role", "User"),
         "permissions": session.get("permissions", {}),
+        "company_access": session.get("company_access", "all"),
     }
 
 @app.post("/api/users")
@@ -289,9 +340,11 @@ async def add_user(request: Request):
         if row[0] and str(row[0]).lower() == username.lower():
             wb.close()
             return JSONResponse(status_code=400, content={"error": f"Username '{username}' already exists"})
+    company_access = body.get("company_access", "all")
     new_row = [username, password, fullname, role]
     for key in ["sap_reports", "payroll_reports", "ob_accounts", "ob_orders", "ob_invoices", "ob_reports"]:
         new_row.append(perms.get(key, "Edit"))
+    new_row.append(company_access)
     ws.append(new_row)
     wb.save(USERS_XLSX)
     wb.close()
@@ -324,6 +377,9 @@ async def update_user(request: Request, row_num: int):
     for key, col_idx in PERM_COL_MAP.items():
         if key in perms:
             ws.cell(row=row_num, column=col_idx, value=perms[key])
+    # Update company access — column K (11)
+    if "company_access" in body:
+        ws.cell(row=row_num, column=11, value=body["company_access"])
     wb.save(USERS_XLSX)
     wb.close()
     portal.load_users()
@@ -346,6 +402,44 @@ async def delete_user(request: Request, row_num: int):
     wb.close()
     portal.load_users()
     return {"status": "ok"}
+
+@app.post("/api/change-password")
+async def change_password(request: Request):
+    """Allow any logged-in user to change their own password."""
+    session = get_session_from_request(request)
+    if not session:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+    body = await request.json()
+    current_password = body.get("current_password", "").strip()
+    new_password = body.get("new_password", "").strip()
+    confirm_password = body.get("confirm_password", "").strip()
+    if not current_password or not new_password:
+        return JSONResponse(status_code=400, content={"error": "All fields are required"})
+    if new_password != confirm_password:
+        return JSONResponse(status_code=400, content={"error": "New passwords do not match"})
+    if len(new_password) < 4:
+        return JSONResponse(status_code=400, content={"error": "New password must be at least 4 characters"})
+    # Verify current password
+    username = session.get("username", "")
+    user = portal.authenticate(username, current_password)
+    if not user:
+        return JSONResponse(status_code=400, content={"error": "Current password is incorrect"})
+    # Update password in users.xlsx
+    wb = openpyxl.load_workbook(USERS_XLSX)
+    ws = wb.active
+    updated = False
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=False), start=2):
+        if row[0].value and str(row[0].value).strip().lower() == username.lower():
+            ws.cell(row=row_idx, column=2, value=new_password)
+            updated = True
+            break
+    if not updated:
+        wb.close()
+        return JSONResponse(status_code=404, content={"error": "User not found in system"})
+    wb.save(USERS_XLSX)
+    wb.close()
+    portal.load_users()
+    return {"status": "ok", "message": "Password changed successfully"}
 
 
 def format_date_long(date_str):

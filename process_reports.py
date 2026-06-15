@@ -46,6 +46,10 @@ COMPANY_COLUMNS = {
     "DISCOVERY": "K",
 }
 
+def is_known_company(company_name):
+    """Check if a company is one of the known aggregate companies."""
+    return company_name in COMPANY_COLUMNS
+
 MONTH_ROWS = {
     1:  (2,  "January"),
     2:  (7,  "February"),
@@ -175,16 +179,18 @@ def parse_filename(fname):
 
     company = " ".join(company_tokens)
 
+    # Check if it's one of the known aggregate companies (normalize name)
     matched_company = None
     for known in COMPANY_COLUMNS:
         if known.upper() in company or company in known.upper():
             matched_company = known
             break
 
-    if matched_company is None:
-        return None
+    # Accept any company name — use the matched known name if found,
+    # otherwise use the raw parsed name (title-cased for display)
+    final_company = matched_company if matched_company else company.upper()
 
-    return file_type, matched_company, month_num, year
+    return file_type, final_company, month_num, year
 
 
 INPUT_SUBFOLDER    = "Input Files"
