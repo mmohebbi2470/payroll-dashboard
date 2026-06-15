@@ -19,7 +19,7 @@ DB_TYPE = os.environ.get("AG_DB_TYPE", "sqlite").lower()
 if DB_TYPE == "postgresql":
     DATABASE_URL = os.environ.get(
         "AG_DATABASE_URL",
-        "postgresql://postgres:Regency1@postgres.itcurves.us:5432/Backlog"
+        "postgresql://postgres:Regency1@postgres.itcurves.us:5432/sap_portal"
     )
     engine = create_engine(DATABASE_URL)
 else:

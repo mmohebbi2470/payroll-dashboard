@@ -13,7 +13,7 @@ SERVER_PASS='P@$$word@2018'
 REMOTE_DIR='AntiGravity-SAP-report'
 CHECKSUM_DIR='AntiGravity-SAP-report/.deploy-checksums'
 APP_NAME="AntiGravity-SAP-report"
-APP_PORT="8002"
+APP_PORT="8001"
 
 echo "🚀 Deploying $APP_NAME to $SERVER_HOST..."
 
@@ -27,7 +27,6 @@ sshpass -p "$SERVER_PASS" rsync -avz --progress \
   --exclude='.git' \
   --exclude='.DS_Store' \
   --exclude='.env' \
-  --exclude='Orders/' \
   --exclude='deploy.sh' \
   --exclude='.deploy-checksums' \
   "./" "$SERVER_USER@$SERVER_HOST:~/$REMOTE_DIR/"
@@ -66,18 +65,18 @@ sshpass -p "$SERVER_PASS" ssh -o StrictHostKeyChecking=no -p "$SERVER_PORT" "$SE
   # Delete old process if it exists (clean slate for env vars)
   pm2 delete AntiGravity-SAP-report 2>/dev/null || true
 
-  # Start with environment variables baked in via PM2
-  USE_POSTGRES=true \
-  AG_ORDERS_PORT=8002 \
-  AG_DATABASE_URL="postgresql://postgres:Regency1@localhost:5432/Backlog" \
-  pm2 start ./venv/bin/python \
+  # Start unified server (all 3 modules: SAP Reports, Payroll, Orders)
+  AG_DB_TYPE=postgresql \
+  AG_DATABASE_URL="postgresql://postgres:Regency1@localhost:5432/sap_portal" \
+  pm2 start ./venv/bin/uvicorn \
     --name "AntiGravity-SAP-report" \
     --interpreter none \
-    -- backend/orders.py 2>&1
+    -- backend.payroll:app --host 0.0.0.0 --port 8001 2>&1
 
   pm2 save 2>&1
 
   echo ''
   echo '✅ Deployment complete!'
+  echo "Dashboard available at: http://192.168.13.75:8001"
   pm2 status
 REMOTE_SCRIPT
